@@ -1,0 +1,46 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3P23D2mou2uehHF.root --database NB6sfsrQJDFwc33rfCeztP --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "clients"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "comments"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "construction_sites"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "documents"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "expenses"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "invoices"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "project_phases"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "projects"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "tasks"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "team_members"
+    },
+    {
+      "Tables_in_NB6sfsrQJDFwc33rfCeztP": "users"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_NB6sfsrQJDFwc33rfCeztP\n__drizzle_migrations\nclients\ncomments\nconstruction_sites\ndocuments\nexpenses\ninvoices\nproject_phases\nprojects\ntasks\nteam_members\nusers\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}
