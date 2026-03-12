@@ -4,8 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AppLayout } from "./components/AppLayout";
-import Dashboard from "./pages/Dashboard";
+import EnhancedDashboard from "./pages/EnhancedDashboard";
 import Projects from "./pages/Projects";
 import ProjectCreate from "./pages/ProjectCreate";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -15,34 +14,50 @@ import ClientDetail from "./pages/ClientDetail";
 import Sites from "./pages/Sites";
 import SiteDetail from "./pages/SiteDetail";
 import Cabinet from "./pages/Cabinet";
+import Reports from "./pages/Reports";
+import Validation from "./pages/Validation";
+import Notifications from "./pages/Notifications";
+import Opportunities from "./pages/Opportunities";
 
 function Router() {
   return (
-    <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
+    <Switch>
+      {/* Dashboard */}
+      <Route path={"/"} component={EnhancedDashboard} />
 
-        {/* Projets */}
-        <Route path="/projets" component={Projects} />
-        <Route path="/projets/nouveau" component={ProjectCreate} />
-        <Route path="/projets/:id" component={ProjectDetail} />
+      {/* Opportunities */}
+      <Route path={"/opportunities"} component={Opportunities} />
 
-        {/* Clients */}
-        <Route path="/clients" component={Clients} />
-        <Route path="/clients/nouveau" component={ClientCreate} />
-        <Route path="/clients/:id" component={ClientDetail} />
+      {/* Projects */}
+      <Route path={"/projects"} component={Projects} />
+      <Route path={"/projects/create"} component={ProjectCreate} />
+      <Route path={"/projects/:id"} component={ProjectDetail} />
 
-        {/* Chantier */}
-        <Route path="/chantier" component={Sites} />
-        <Route path="/chantier/:id" component={SiteDetail} />
+      {/* Clients */}
+      <Route path={"/clients"} component={Clients} />
+      <Route path={"/clients/create"} component={ClientCreate} />
+      <Route path={"/clients/:id"} component={ClientDetail} />
 
-        {/* Cabinet */}
-        <Route path="/cabinet" component={Cabinet} />
+      {/* Sites (Chantiers) */}
+      <Route path={"/sites"} component={Sites} />
+      <Route path={"/sites/:id"} component={SiteDetail} />
 
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </AppLayout>
+      {/* Cabinet */}
+      <Route path={"/cabinet"} component={Cabinet} />
+
+      {/* Reports */}
+      <Route path={"/reports"} component={Reports} />
+
+      {/* Validation */}
+      <Route path={"/validation"} component={Validation} />
+
+      {/* Notifications */}
+      <Route path={"/notifications"} component={Notifications} />
+
+      {/* 404 */}
+      <Route path={"/404"} component={NotFound} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
