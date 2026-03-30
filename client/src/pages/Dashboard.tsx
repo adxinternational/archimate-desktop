@@ -2,18 +2,21 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, TrendingUp, Clock, DollarSign, AlertTriangle, CheckCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { EnhancedLayout } from "@/components/EnhancedLayout";
+import { useLocation } from "wouter";
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
-  const [stats, setStats] = useState({
-    totalProjects: 0,
-    activeProjects: 0,
-    totalBudget: 0,
-    budgetUsed: 0,
-    onTimeProjects: 0,
-    delayedProjects: 0,
-    activeAlerts: 0,
+  const [, navigate] = useLocation();
+  const [stats] = useState({
+    totalProjects: 3,
+    activeProjects: 3,
+    totalBudget: 1500000,
+    budgetUsed: 1200000,
+    onTimeProjects: 2,
+    delayedProjects: 1,
+    activeAlerts: 2,
   });
 
   if (!isAuthenticated) {
@@ -33,20 +36,17 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
+    <EnhancedLayout title="Tableau de Bord SaaS">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Tableau de Bord
-          </h1>
+        <div>
           <p className="text-muted-foreground">
             Bienvenue, {user?.name}. Voici un aperçu de vos projets et alertes.
           </p>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Projects */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -72,7 +72,7 @@ export default function Dashboard() {
                 {((stats.budgetUsed / stats.totalBudget) * 100).toFixed(0)}%
               </div>
               <p className="text-xs text-muted-foreground">
-                {stats.budgetUsed.toLocaleString()} € / {stats.totalBudget.toLocaleString()} €
+                {(stats.budgetUsed / 1000).toFixed(0)}k € / {(stats.totalBudget / 1000).toFixed(0)}k €
               </p>
             </CardContent>
           </Card>
@@ -118,13 +118,17 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
+                {[
+                  { name: "Immeuble Centre-Ville", phase: "EXE", progress: 75 },
+                  { name: "Maison Individuelle", phase: "APD", progress: 65 },
+                  { name: "Centre Commercial", phase: "PRO", progress: 45 },
+                ].map((project, i) => (
                   <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent transition-colors">
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">Projet {i}</p>
-                      <p className="text-sm text-muted-foreground">Phase APD - 65% complété</p>
+                      <p className="font-medium text-foreground">{project.name}</p>
+                      <p className="text-sm text-muted-foreground">Phase {project.phase} - {project.progress}% complété</p>
                     </div>
-                    <Button variant="outline" size="sm">Voir</Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate("/projects")}>Voir</Button>
                   </div>
                 ))}
               </div>
@@ -138,19 +142,35 @@ export default function Dashboard() {
               <CardDescription>Accès rapide aux fonctionnalités</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => navigate("/projects/create")}
+              >
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Nouveau Projet
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => navigate("/crm/leads")}
+              >
                 <AlertCircle className="mr-2 h-4 w-4" />
                 Gérer Leads
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => navigate("/economy")}
+              >
                 <DollarSign className="mr-2 h-4 w-4" />
                 Estimations
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => navigate("/projects")}
+              >
                 <Clock className="mr-2 h-4 w-4" />
                 Planning
               </Button>
@@ -160,7 +180,7 @@ export default function Dashboard() {
 
         {/* Alerts Section */}
         {stats.activeAlerts > 0 && (
-          <Card className="mt-6 border-red-500 bg-red-50">
+          <Card className="border-red-500 bg-red-50">
             <CardHeader>
               <CardTitle className="text-red-700">Alertes Actives</CardTitle>
               <CardDescription>Éléments nécessitant votre attention</CardDescription>
@@ -171,7 +191,14 @@ export default function Dashboard() {
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   <div className="flex-1">
                     <p className="font-medium text-red-900">Dépassement budgétaire détecté</p>
-                    <p className="text-sm text-red-700">Projet: Immeuble Centre-Ville</p>
+                    <p className="text-sm text-red-700">Projet: Immeuble Centre-Ville (+5,000€)</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-medium text-red-900">Retard de planning détecté</p>
+                    <p className="text-sm text-red-700">Projet: Centre Commercial (3 jours de retard)</p>
                   </div>
                 </div>
               </div>
@@ -179,6 +206,6 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
-    </div>
+    </EnhancedLayout>
   );
 }

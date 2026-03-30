@@ -5,8 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, TrendingDown, TrendingUp, DollarSign, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EnhancedLayout } from "@/components/EnhancedLayout";
+import { useLocation } from "wouter";
 
 export default function Economy() {
+  const [, navigate] = useLocation();
   const [selectedProject, setSelectedProject] = useState(1);
 
   // Mock data
@@ -78,17 +81,17 @@ export default function Economy() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <EnhancedLayout title="Économie de la Construction">
+    <div>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Économie de la Construction</h1>
             <p className="text-muted-foreground">
               Suivi des coûts, estimations et alertes budgétaires
             </p>
           </div>
-          <Button size="lg">
+          <Button size="lg" onClick={() => navigate("/economy/create")}>
             <Plus className="mr-2 h-4 w-4" />
             Nouvelle Estimation
           </Button>
@@ -330,5 +333,6 @@ export default function Economy() {
         </Card>
       </div>
     </div>
+    </EnhancedLayout>
   );
 }

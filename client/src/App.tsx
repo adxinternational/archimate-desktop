@@ -21,6 +21,9 @@ import Opportunities from "./pages/Opportunities";
 import Dashboard from "./pages/Dashboard";
 import CRMLeads from "./pages/CRMLeads";
 import Economy from "./pages/Economy";
+import BIM from "./pages/BIM";
+import GanttPage from "./pages/GanttPage";
+import SiteManagement from "./pages/SiteManagement";
 
 function Router() {
   return (
@@ -61,6 +64,9 @@ function Router() {
       <Route path={"/dashboard-saas"} component={Dashboard} />
       <Route path={"/crm/leads"} component={CRMLeads} />
       <Route path={"/economy"} component={Economy} />
+      <Route path={"/bim"} component={BIM} />
+      <Route path={"/gantt"} component={GanttPage} />
+      <Route path={"/site-management"} component={SiteManagement} />
 
       {/* 404 */}
       <Route path={"/404"} component={NotFound} />
