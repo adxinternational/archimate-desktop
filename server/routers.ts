@@ -5,6 +5,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
+import { crmRouter, projectsRouter, economyRouter, alertsRouter } from "./routers_extended";
+import { aiRouter } from "./routers_ai";
 import {
   getAllClients, getClientById, createClient, updateClient, deleteClient,
   getAllProjects, getProjectById, getProjectsByClient, createProject, updateProject, deleteProject,
@@ -27,6 +29,11 @@ import {
 
 export const appRouter = router({
   system: systemRouter,
+  crm: crmRouter,
+  projects_extended: projectsRouter,
+  economy: economyRouter,
+  alerts: alertsRouter,
+  ai: aiRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

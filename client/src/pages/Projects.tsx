@@ -1,182 +1,248 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Plus, Search, FolderOpen, ArrowRight, Filter, SortAsc
-} from "lucide-react";
-import {
-  formatCurrency, formatDate, getPhaseColor, getStatusColor,
-  PHASE_LABELS, STATUS_LABELS, PHASE_ORDER
-} from "@/lib/constants";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Plus, ChevronRight, AlertCircle } from "lucide-react";
 
-type FilterStatus = "all" | "active" | "on_hold" | "completed" | "cancelled";
-type FilterPhase = "all" | string;
+const phases = ["ESQ", "APS", "APD", "PRO", "DCE", "EXE", "DET", "AOR"];
+
+const phaseDescriptions = {
+  ESQ: "Esquisse",
+  APS: "Avant-Projet Sommaire",
+  APD: "Avant-Projet Détaillé",
+  PRO: "Projet",
+  DCE: "Dossier de Consultation d'Entreprises",
+  EXE: "Exécution",
+  DET: "Détails",
+  AOR: "Assistance et Ouvrages Réceptionnés",
+};
 
 export default function Projects() {
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [selectedPhase, setSelectedPhase] = useState("all");
 
-  const { data: projects, isLoading } = trpc.projects.list.useQuery();
-  const { data: clients } = trpc.clients.list.useQuery();
-
-  const filtered = (projects ?? []).filter(p => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
-      clients?.find(c => c.id === p.clientId)?.name.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === "all" || p.status === filterStatus;
-    return matchSearch && matchStatus;
-  });
-
-  const statusFilters: { key: FilterStatus; label: string; count: number }[] = [
-    { key: "all", label: "Tous", count: projects?.length ?? 0 },
-    { key: "active", label: "En cours", count: projects?.filter(p => p.status === "active").length ?? 0 },
-    { key: "on_hold", label: "En attente", count: projects?.filter(p => p.status === "on_hold").length ?? 0 },
-    { key: "completed", label: "Terminés", count: projects?.filter(p => p.status === "completed").length ?? 0 },
+  // Mock data - replace with actual tRPC query
+  const projects = [
+    {
+      id: 1,
+      name: "Immeuble Centre-Ville",
+      type: "Résidentiel",
+      address: "123 Rue de la Paix, Paris",
+      currentPhase: "APD",
+      progress: 65,
+      budgetEstimated: 500000,
+      budgetUsed: 320000,
+      startDate: "2025-01-15",
+      endDate: "2026-12-31",
+      status: "active",
+    },
+    {
+      id: 2,
+      name: "Centre Commercial",
+      type: "Commercial",
+      address: "456 Avenue Principale, Lyon",
+      currentPhase: "PRO",
+      progress: 45,
+      budgetEstimated: 1200000,
+      budgetUsed: 540000,
+      startDate: "2025-03-01",
+      endDate: "2027-06-30",
+      status: "active",
+    },
+    {
+      id: 3,
+      name: "Maison Individuelle",
+      type: "Résidentiel",
+      address: "789 Chemin Rural, Marseille",
+      currentPhase: "EXE",
+      progress: 85,
+      budgetEstimated: 250000,
+      budgetUsed: 212500,
+      startDate: "2024-06-01",
+      endDate: "2026-03-31",
+      status: "active",
+    },
   ];
 
+  const filteredProjects = selectedPhase === "all" 
+    ? projects 
+    : projects.filter(p => p.currentPhase === selectedPhase);
+
   return (
-    <div className="p-6 space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Projets</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{projects?.length ?? 0} projet(s) au total</p>
-        </div>
-        <Link href="/projets/nouveau">
-          <Button size="sm" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Nouveau projet
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Gestion des Projets</h1>
+            <p className="text-muted-foreground">
+              {filteredProjects.length} projets - Gestion complète du cycle de vie architectural
+            </p>
+          </div>
+          <Button size="lg">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau Projet
           </Button>
-        </Link>
-      </div>
+        </div>
 
-      {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher un projet ou client..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {statusFilters.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilterStatus(f.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
-                filterStatus === f.key
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-              }`}
-            >
-              {f.label}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                filterStatus === f.key ? "bg-white/20" : "bg-muted"
-              }`}>{f.count}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Projects Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="border-0 shadow-sm">
-              <CardContent className="p-5 space-y-3">
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-2 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <FolderOpen className="w-14 h-14 mx-auto mb-3 opacity-20" />
-          <p className="text-base font-medium">Aucun projet trouvé</p>
-          <p className="text-sm mt-1">
-            {search ? "Modifiez votre recherche" : "Créez votre premier projet"}
-          </p>
-          {!search && (
-            <Link href="/projets/nouveau">
-              <Button size="sm" className="mt-4 gap-2">
-                <Plus className="w-4 h-4" />
-                Créer un projet
+        {/* Phase Filter */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Filtrer par phase</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={selectedPhase === "all" ? "default" : "outline"}
+                onClick={() => setSelectedPhase("all")}
+              >
+                Tous
               </Button>
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(project => {
-            const client = clients?.find(c => c.id === project.clientId);
-            const phaseIndex = PHASE_ORDER.indexOf(project.currentPhase as any);
-            const phaseProgress = phaseIndex >= 0 ? Math.round(((phaseIndex + 1) / PHASE_ORDER.length) * 100) : 0;
+              {phases.map((phase) => (
+                <Button
+                  key={phase}
+                  variant={selectedPhase === phase ? "default" : "outline"}
+                  onClick={() => setSelectedPhase(phase)}
+                  size="sm"
+                >
+                  {phase}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Projects List */}
+        <div className="space-y-4">
+          {filteredProjects.map((project) => {
+            const currentPhaseIndex = phases.indexOf(project.currentPhase);
+            const budgetPercentage = (project.budgetUsed / project.budgetEstimated) * 100;
+            const isOverBudget = budgetPercentage > 100;
 
             return (
-              <Link key={project.id} href={`/projets/${project.id}`}>
-                <Card className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group h-full">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0 mr-2">
-                        <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                          {project.name}
-                        </h3>
-                        {client && (
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{client.name}</p>
+              <Card key={project.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-foreground mb-1">{project.name}</h3>
+                        <p className="text-sm text-muted-foreground">{project.address}</p>
+                      </div>
+                      <div className="text-right">
+                        <Badge className="mb-2">{project.type}</Badge>
+                        {isOverBudget && (
+                          <div className="flex items-center gap-1 text-red-600 text-sm">
+                            <AlertCircle className="h-4 w-4" />
+                            Dépassement
+                          </div>
                         )}
                       </div>
-                      <Badge className={`text-xs flex-shrink-0 ${getStatusColor(project.status)}`}>
-                        {STATUS_LABELS[project.status]}
-                      </Badge>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge className={`text-xs ${getPhaseColor(project.currentPhase)}`}>
-                        {PHASE_LABELS[project.currentPhase]}
-                      </Badge>
-                      {project.city && (
-                        <span className="text-xs text-muted-foreground truncate">{project.city}</span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5 mb-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Progression des phases</span>
-                        <span>{phaseProgress}%</span>
+                    {/* Phase Progress */}
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-3">Progression des phases</p>
+                      <div className="flex gap-1">
+                        {phases.map((phase, index) => (
+                          <div
+                            key={phase}
+                            className={`flex-1 h-2 rounded-full transition-colors ${
+                              index <= currentPhaseIndex
+                                ? "bg-blue-500"
+                                : "bg-gray-200"
+                            }`}
+                            title={phaseDescriptions[phase as keyof typeof phaseDescriptions]}
+                          />
+                        ))}
                       </div>
-                      <Progress value={phaseProgress} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Phase actuelle: <span className="font-semibold">{project.currentPhase} - {phaseDescriptions[project.currentPhase as keyof typeof phaseDescriptions]}</span>
+                      </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Budget estimé</p>
-                        <p className="text-sm font-semibold text-foreground">{formatCurrency(project.budgetEstimated ?? 0)}</p>
+                    {/* Progress Bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-foreground">Avancement global</p>
+                        <p className="text-sm font-semibold text-foreground">{project.progress}%</p>
                       </div>
-                      {project.startDate && (
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Démarrage</p>
-                          <p className="text-xs font-medium">{formatDate(project.startDate)}</p>
-                        </div>
-                      )}
-                      <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Progress value={project.progress} className="h-2" />
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+
+                    {/* Budget & Timeline */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-3 bg-accent rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Budget</p>
+                        <p className={`font-semibold ${isOverBudget ? "text-red-600" : "text-foreground"}`}>
+                          {budgetPercentage.toFixed(0)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {project.budgetUsed.toLocaleString()} € / {project.budgetEstimated.toLocaleString()} €
+                        </p>
+                      </div>
+                      <div className="p-3 bg-accent rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Début</p>
+                        <p className="font-semibold text-foreground">
+                          {new Date(project.startDate).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-accent rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Fin prévue</p>
+                        <p className="font-semibold text-foreground">
+                          {new Date(project.endDate).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" className="flex-1">
+                        Détails
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
-      )}
+
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Projets Actifs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{projects.filter(p => p.status === "active").length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Budget Total Engagé</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {(projects.reduce((sum, p) => sum + p.budgetUsed, 0) / 1000).toFixed(0)}k €
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Progression Moyenne</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / projects.length)}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

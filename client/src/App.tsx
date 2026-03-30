@@ -18,6 +18,9 @@ import Reports from "./pages/Reports";
 import Validation from "./pages/Validation";
 import Notifications from "./pages/Notifications";
 import Opportunities from "./pages/Opportunities";
+import Dashboard from "./pages/Dashboard";
+import CRMLeads from "./pages/CRMLeads";
+import Economy from "./pages/Economy";
 
 function Router() {
   return (
@@ -53,6 +56,11 @@ function Router() {
 
       {/* Notifications */}
       <Route path={"/notifications"} component={Notifications} />
+
+      {/* SaaS Modules */}
+      <Route path={"/dashboard-saas"} component={Dashboard} />
+      <Route path={"/crm/leads"} component={CRMLeads} />
+      <Route path={"/economy"} component={Economy} />
 
       {/* 404 */}
       <Route path={"/404"} component={NotFound} />
