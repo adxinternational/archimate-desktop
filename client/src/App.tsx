@@ -1,81 +1,148 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import EnhancedDashboard from "./pages/EnhancedDashboard";
-import Projects from "./pages/Projects";
-import ProjectCreate from "./pages/ProjectCreate";
-import ProjectDetail from "./pages/ProjectDetail";
-import Clients from "./pages/Clients";
-import ClientCreate from "./pages/ClientCreate";
-import ClientDetail from "./pages/ClientDetail";
-import Sites from "./pages/Sites";
-import SiteDetail from "./pages/SiteDetail";
-import Cabinet from "./pages/Cabinet";
-import Reports from "./pages/Reports";
-import Validation from "./pages/Validation";
-import Notifications from "./pages/Notifications";
-import Opportunities from "./pages/Opportunities";
-import Dashboard from "./pages/Dashboard";
-import CRMLeads from "./pages/CRMLeads";
-import Economy from "./pages/Economy";
-import BIM from "./pages/BIM";
-import GanttPage from "./pages/GanttPage";
-import SiteManagement from "./pages/SiteManagement";
+import { useAuth } from "./_core/hooks/useAuth";
+
+// Auth pages (publiques)
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+
+// Pages principales
+import EnhancedDashboard from "@/pages/EnhancedDashboard";
+import Projects from "@/pages/Projects";
+import ProjectCreate from "@/pages/ProjectCreate";
+import ProjectDetail from "@/pages/ProjectDetail";
+import Clients from "@/pages/Clients";
+import ClientCreate from "@/pages/ClientCreate";
+import ClientDetail from "@/pages/ClientDetail";
+import Sites from "@/pages/Sites";
+import SiteDetail from "@/pages/SiteDetail";
+import Cabinet from "@/pages/Cabinet";
+import Reports from "@/pages/Reports";
+import Validation from "@/pages/Validation";
+import Notifications from "@/pages/Notifications";
+import Opportunities from "@/pages/Opportunities";
+import CRMLeads from "@/pages/CRMLeads";
+import Economy from "@/pages/Economy";
+import BIM from "@/pages/BIM";
+import GanttPage from "@/pages/GanttPage";
+import SiteManagement from "@/pages/SiteManagement";
+import NotFound from "@/pages/NotFound";
+
+// ── Guard : redirige vers /login si non authentifié ──────────
+function ProtectedRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
+}) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">
+        Chargement…
+      </div>
+    );
+  }
+  if (!user) return <Redirect to="/login" />;
+  return <Component />;
+}
 
 function Router() {
   return (
     <Switch>
-      {/* Dashboard */}
-      <Route path={"/"} component={EnhancedDashboard} />
+      {/* ── Pages publiques ─────────────────────────────── */}
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
 
-      {/* Opportunities */}
-      <Route path={"/opportunities"} component={Opportunities} />
+      {/* ── Dashboard ───────────────────────────────────── */}
+      <Route path="/">
+        {() => <ProtectedRoute component={EnhancedDashboard} />}
+      </Route>
 
-      {/* Projects */}
-      <Route path={"/projects"} component={Projects} />
-      <Route path={"/projects/create"} component={ProjectCreate} />
-      <Route path={"/projects/:id"} component={ProjectDetail} />
+      {/* ── CRM ─────────────────────────────────────────── */}
+      <Route path="/opportunities">
+        {() => <ProtectedRoute component={Opportunities} />}
+      </Route>
+      <Route path="/crm/leads">
+        {() => <ProtectedRoute component={CRMLeads} />}
+      </Route>
 
-      {/* Clients */}
-      <Route path={"/clients"} component={Clients} />
-      <Route path={"/clients/create"} component={ClientCreate} />
-      <Route path={"/clients/:id"} component={ClientDetail} />
+      {/* ── Clients ─────────────────────────────────────── */}
+      <Route path="/clients">
+        {() => <ProtectedRoute component={Clients} />}
+      </Route>
+      <Route path="/clients/create">
+        {() => <ProtectedRoute component={ClientCreate} />}
+      </Route>
+      <Route path="/clients/:id">
+        {() => <ProtectedRoute component={ClientDetail} />}
+      </Route>
 
-      {/* Sites (Chantiers) */}
-      <Route path={"/sites"} component={Sites} />
-      <Route path={"/sites/:id"} component={SiteDetail} />
+      {/* ── Projets ─────────────────────────────────────── */}
+      <Route path="/projects">
+        {() => <ProtectedRoute component={Projects} />}
+      </Route>
+      <Route path="/projects/create">
+        {() => <ProtectedRoute component={ProjectCreate} />}
+      </Route>
+      <Route path="/projects/:id">
+        {() => <ProtectedRoute component={ProjectDetail} />}
+      </Route>
 
-      {/* Cabinet */}
-      <Route path={"/cabinet"} component={Cabinet} />
+      {/* ── Économie ────────────────────────────────────── */}
+      <Route path="/economy">
+        {() => <ProtectedRoute component={Economy} />}
+      </Route>
 
-      {/* Reports */}
-      <Route path={"/reports"} component={Reports} />
+      {/* ── Chantiers ───────────────────────────────────── */}
+      <Route path="/sites">
+        {() => <ProtectedRoute component={Sites} />}
+      </Route>
+      <Route path="/sites/:id">
+        {() => <ProtectedRoute component={SiteDetail} />}
+      </Route>
+      <Route path="/site-management">
+        {() => <ProtectedRoute component={SiteManagement} />}
+      </Route>
 
-      {/* Validation */}
-      <Route path={"/validation"} component={Validation} />
+      {/* ── Planning ────────────────────────────────────── */}
+      <Route path="/gantt">
+        {() => <ProtectedRoute component={GanttPage} />}
+      </Route>
 
-      {/* Notifications */}
-      <Route path={"/notifications"} component={Notifications} />
+      {/* ── Cabinet / GRH ───────────────────────────────── */}
+      <Route path="/cabinet">
+        {() => <ProtectedRoute component={Cabinet} />}
+      </Route>
 
-      {/* SaaS Modules */}
-      <Route path={"/dashboard-saas"} component={Dashboard} />
-      <Route path={"/crm/leads"} component={CRMLeads} />
-      <Route path={"/economy"} component={Economy} />
-      <Route path={"/bim"} component={BIM} />
-      <Route path={"/gantt"} component={GanttPage} />
-      <Route path={"/site-management"} component={SiteManagement} />
+      {/* ── BIM ─────────────────────────────────────────── */}
+      <Route path="/bim">
+        {() => <ProtectedRoute component={BIM} />}
+      </Route>
 
-      {/* 404 */}
-      <Route path={"/404"} component={NotFound} />
+      {/* ── Rapports & Validation ───────────────────────── */}
+      <Route path="/reports">
+        {() => <ProtectedRoute component={Reports} />}
+      </Route>
+      <Route path="/validation">
+        {() => <ProtectedRoute component={Validation} />}
+      </Route>
+
+      {/* ── Notifications ───────────────────────────────── */}
+      <Route path="/notifications">
+        {() => <ProtectedRoute component={Notifications} />}
+      </Route>
+
+      {/* ── 404 ─────────────────────────────────────────── */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
@@ -87,5 +154,3 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-export default App;
