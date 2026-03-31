@@ -1,182 +1,315 @@
-import { useMemo } from 'react';
-import { EnhancedLayout } from '@/components/EnhancedLayout';
-import { KPICard } from '@/components/KPICard';
-import { FinancialChart } from '@/components/FinancialChart';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useMemo } from "react";
+import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { EnhancedLayout } from "@/components/EnhancedLayout";
+import { FinancialChart } from "@/components/FinancialChart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  DollarSign, TrendingUp, Clock, FileText, AlertCircle,
-  CheckCircle2, Users, Zap
-} from 'lucide-react';
-import { trpc } from '@/lib/trpc';
+  FolderOpen, Users, CheckSquare, AlertCircle,
+  TrendingUp, Clock, DollarSign, Hammer, ArrowRight, Loader2,
+} from "lucide-react";
 
-// Mock data for charts
-const financialData = [
-  { month: 'Jan', revenue: 45000, costs: 32000, margin: 13000, profit: 13000 },
-  { month: 'Fév', revenue: 52000, costs: 35000, margin: 17000, profit: 17000 },
-  { month: 'Mar', revenue: 48000, costs: 33000, margin: 15000, profit: 15000 },
-  { month: 'Avr', revenue: 61000, costs: 38000, margin: 23000, profit: 23000 },
-  { month: 'Mai', revenue: 55000, costs: 36000, margin: 19000, profit: 19000 },
-  { month: 'Jun', revenue: 67000, costs: 40000, margin: 27000, profit: 27000 },
-];
+const PHASE_LABELS: Record<string, string> = {
+  esq: "ESQ", aps: "APS", apd: "APD", pro: "PRO",
+  dce: "DCE", exe: "EXE", det: "DET", aor: "AOR",
+};
 
-const projectPerformanceData = [
-  { month: 'Jan', completed: 3, inProgress: 5, delayed: 1 },
-  { month: 'Fév', completed: 4, inProgress: 4, delayed: 2 },
-  { month: 'Mar', completed: 5, inProgress: 3, delayed: 1 },
-  { month: 'Avr', completed: 6, inProgress: 4, delayed: 0 },
-  { month: 'Mai', completed: 5, inProgress: 5, delayed: 1 },
-  { month: 'Jun', completed: 7, inProgress: 3, delayed: 1 },
-];
+function fmt(n: number) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M €";
+  if (n >= 1_000) return (n / 1_000).toFixed(0) + "k €";
+  return n + " €";
+}
 
 export default function EnhancedDashboard() {
-  const { data: projects } = trpc.projects.list.useQuery();
-  const { data: clients } = trpc.clients.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: teamMembers } = trpc.team.list.useQuery();
+  const [, navigate] = useLocation();
 
-  const stats = useMemo(() => {
+  // ── Toutes les données réelles ───────────────────────────
+  const { data: projects = [], isLoading: loadingProj } = trpc.projects.list.useQuery();
+  const { data: clients = [], isLoading: loadingClients } = trpc.clients.list.useQuery();
+  const { data: tasks = [], isLoading: loadingTasks } = trpc.tasks.list.useQuery();
+  const { data: team = [] } = trpc.team.list.useQuery();
+  const { data: invoices = [] } = trpc.invoices.list.useQuery();
+  const { data: expenses = [] } = trpc.expenses.list.useQuery();
+  const { data: sites = [] } = trpc.sites.list.useQuery();
+
+  const isLoading = loadingProj || loadingClients || loadingTasks;
+
+  // ── KPIs calculés ────────────────────────────────────────
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const activeProjects = projects.filter(p => p.status === "active").length;
+    const totalBudget = projects.filter(p => p.status === "active")
+      .reduce((s, p) => s + (p.budgetEstimated ?? 0), 0);
+
+    const overdueTasks = tasks.filter(t =>
+      t.status !== "done" && t.dueDate && new Date(t.dueDate) < now
+    ).length;
+    const pendingTasks = tasks.filter(t => t.status === "todo" || t.status === "in_progress").length;
+
+    const monthlyRevenue = invoices
+      .filter(i => i.status === "paid" && new Date(i.createdAt) >= startOfMonth)
+      .reduce((s, i) => s + i.amount, 0);
+
+    const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.amount, 0);
+    const pendingRevenue = invoices.filter(i => i.status === "sent" || i.status === "overdue")
+      .reduce((s, i) => s + i.amount, 0);
+
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+
+    const activeSites = sites.filter(s => s.status === "active").length;
+
     return {
-      facturé: 328000,
-      nonPayé: 481979,
-      tempsEnregistré: 93,
-      note: 4.5,
-      activeProjects: projects?.length || 0,
-      totalClients: clients?.length || 0,
-      pendingTasks: tasks?.filter(t => t.status === 'todo').length || 0,
-      teamSize: teamMembers?.length || 0,
+      activeProjects, totalBudget, overdueTasks, pendingTasks,
+      monthlyRevenue, totalRevenue, pendingRevenue, totalExpenses,
+      activeSites, teamSize: team.length, totalClients: clients.length,
     };
-  }, [projects, clients, tasks, teamMembers]);
+  }, [projects, tasks, invoices, expenses, sites, team, clients]);
+
+  // ── Données graphique financier (6 derniers mois) ────────
+  const chartData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      return { month: d.toLocaleString("fr-FR", { month: "short" }), year: d.getFullYear(), m: d.getMonth() };
+    });
+
+    return months.map(({ month, year, m }) => {
+      const revenue = invoices
+        .filter(i => i.status === "paid" && new Date(i.createdAt).getMonth() === m && new Date(i.createdAt).getFullYear() === year)
+        .reduce((s, i) => s + i.amount, 0);
+      const costs = expenses
+        .filter(e => new Date(e.date).getMonth() === m && new Date(e.date).getFullYear() === year)
+        .reduce((s, e) => s + e.amount, 0);
+      return { month, revenue, costs, margin: revenue - costs };
+    });
+  }, [invoices, expenses]);
+
+  // ── Projets récents ──────────────────────────────────────
+  const recentProjects = useMemo(() =>
+    [...projects]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 5),
+    [projects]
+  );
+
+  // ── Tâches urgentes ──────────────────────────────────────
+  const urgentTasks = useMemo(() =>
+    tasks
+      .filter(t => t.status !== "done" && (t.priority === "urgent" || t.priority === "high"))
+      .slice(0, 5),
+    [tasks]
+  );
+
+  if (isLoading) {
+    return (
+      <EnhancedLayout title="Tableau de bord">
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          <Loader2 className="animate-spin mr-2" size={20} /> Chargement du tableau de bord…
+        </div>
+      </EnhancedLayout>
+    );
+  }
 
   return (
     <EnhancedLayout title="Tableau de bord">
       <div className="space-y-6">
-        {/* Alert Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="text-blue-600 mt-0.5" size={20} />
-          <div>
-            <p className="font-medium text-blue-900">Ceci est un compte démo</p>
-            <p className="text-sm text-blue-800">Toutes les données présentées sont fictives. Cliquez ici pour passer sur votre compte réel.</p>
-          </div>
+
+        {/* KPIs principaux */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Projets actifs</p>
+                <p className="text-3xl font-bold">{kpis.activeProjects}</p>
+                <p className="text-xs text-muted-foreground mt-1">Budget: {fmt(kpis.totalBudget)}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <FolderOpen size={22} className="text-blue-600" />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Revenus encaissés</p>
+                <p className="text-3xl font-bold">{fmt(kpis.totalRevenue)}</p>
+                <p className="text-xs text-muted-foreground mt-1">En attente: {fmt(kpis.pendingRevenue)}</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-xl">
+                <DollarSign size={22} className="text-green-600" />
+              </div>
+            </div>
+          </Card>
+
+          <Card className={`p-5 ${kpis.overdueTasks > 0 ? "border-red-300" : ""}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Tâches en retard</p>
+                <p className={`text-3xl font-bold ${kpis.overdueTasks > 0 ? "text-red-600" : ""}`}>
+                  {kpis.overdueTasks}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{kpis.pendingTasks} en cours</p>
+              </div>
+              <div className={`p-3 rounded-xl ${kpis.overdueTasks > 0 ? "bg-red-100" : "bg-orange-100"}`}>
+                <AlertCircle size={22} className={kpis.overdueTasks > 0 ? "text-red-600" : "text-orange-600"} />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Chantiers actifs</p>
+                <p className="text-3xl font-bold">{kpis.activeSites}</p>
+                <p className="text-xs text-muted-foreground mt-1">{kpis.teamSize} collaborateurs</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <Hammer size={22} className="text-purple-600" />
+              </div>
+            </div>
+          </Card>
         </div>
 
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Facturé"
-            value={`${(stats.facturé / 1000).toFixed(0)}k`}
-            unit="€"
-            icon="📊"
-            trend={12}
-            trendLabel="vs mois dernier"
-            description="Honoraires des projets facturables"
-            color="blue"
-          />
-          <KPICard
-            title="Non payé"
-            value={`${(stats.nonPayé / 1000).toFixed(0)}k`}
-            unit="€"
-            icon="⏳"
-            trend={-5}
-            trendLabel="vs mois dernier"
-            description="Solde TTC des factures de vente envoyées"
-            color="orange"
-          />
-          <KPICard
-            title="Temps enregistré"
-            value={stats.tempsEnregistré}
-            unit="%"
-            icon="⏱️"
-            trend={8}
-            trendLabel="vs mois dernier"
-            description="Pourcentage de temps enregistré"
-            color="green"
-          />
-          <KPICard
-            title="Note"
-            value={stats.note}
-            unit="/5"
-            icon="⭐"
-            description="Écrivez ici vos idées"
-            color="purple"
-          />
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Financial Summary */}
+        {/* Graphique financier */}
+        {chartData.some(d => d.revenue > 0 || d.costs > 0) ? (
           <FinancialChart
-            data={financialData}
-            title="Synthèse financière de l'entreprise pour 2026"
+            data={chartData}
+            title="Synthèse financière — 6 derniers mois"
             type="area"
-            height={300}
+            height={280}
           />
+        ) : (
+          <Card className="p-8 text-center">
+            <TrendingUp size={32} className="mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">Le graphique financier apparaîtra dès que vous aurez des factures et dépenses.</p>
+          </Card>
+        )}
 
-          {/* Project Performance */}
-          <FinancialChart
-            data={projectPerformanceData}
-            title="Performance des projets"
-            type="bar"
-            height={300}
-          />
+        {/* Projets récents + Tâches urgentes */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Projets récents */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Projets récents</CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate("/projects")}>
+                  Voir tout <ArrowRight size={12} className="ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentProjects.length === 0 ? (
+                <div className="text-center py-6">
+                  <FolderOpen size={28} className="mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">Aucun projet</p>
+                  <Button size="sm" className="mt-3" onClick={() => navigate("/projects/create")}>
+                    Créer un projet
+                  </Button>
+                </div>
+              ) : (
+                recentProjects.map(p => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/projects/${p.id}`)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{fmt(p.budgetEstimated ?? 0)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <Badge variant="outline" className="text-xs">
+                        {PHASE_LABELS[p.currentPhase] ?? p.currentPhase.toUpperCase()}
+                      </Badge>
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tâches urgentes */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Tâches prioritaires</CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate("/cabinet")}>
+                  Voir tout <ArrowRight size={12} className="ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {urgentTasks.length === 0 ? (
+                <div className="text-center py-6">
+                  <CheckSquare size={28} className="mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">Aucune tâche urgente</p>
+                </div>
+              ) : (
+                urgentTasks.map(t => {
+                  const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
+                  return (
+                    <div key={t.id} className="flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        t.priority === "urgent" ? "bg-red-500" : "bg-orange-400"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{t.title}</p>
+                        {t.dueDate && (
+                          <p className={`text-xs ${isOverdue ? "text-red-500" : "text-muted-foreground"}`}>
+                            {isOverdue ? "En retard — " : ""}
+                            {new Date(t.dueDate).toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                      </div>
+                      <Badge className={`text-xs shrink-0 ${
+                        t.priority === "urgent" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                      }`}>
+                        {t.priority === "urgent" ? "Urgent" : "Haute"}
+                      </Badge>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Bottom Section - Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Projets actifs</p>
-                <p className="text-3xl font-bold text-foreground">{stats.activeProjects}</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Zap className="text-blue-600" size={24} />
-              </div>
-            </div>
+        {/* Stats secondaires */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="p-4 text-center">
+            <Users size={20} className="mx-auto text-blue-500 mb-2" />
+            <p className="text-2xl font-bold">{kpis.totalClients}</p>
+            <p className="text-xs text-muted-foreground">Clients</p>
           </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Clients</p>
-                <p className="text-3xl font-bold text-foreground">{stats.totalClients}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Users className="text-green-600" size={24} />
-              </div>
-            </div>
+          <Card className="p-4 text-center">
+            <Clock size={20} className="mx-auto text-green-500 mb-2" />
+            <p className="text-2xl font-bold">{kpis.teamSize}</p>
+            <p className="text-xs text-muted-foreground">Collaborateurs</p>
           </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Tâches en attente</p>
-                <p className="text-3xl font-bold text-foreground">{stats.pendingTasks}</p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <AlertCircle className="text-orange-600" size={24} />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Équipe</p>
-                <p className="text-3xl font-bold text-foreground">{stats.teamSize}</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Users className="text-purple-600" size={24} />
-              </div>
-            </div>
+          <Card className="p-4 text-center">
+            <DollarSign size={20} className="mx-auto text-orange-500 mb-2" />
+            <p className="text-2xl font-bold">{fmt(kpis.totalExpenses)}</p>
+            <p className="text-xs text-muted-foreground">Dépenses totales</p>
           </Card>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline">Exporter</Button>
-          <Button>Créer un projet</Button>
+        {/* Actions rapides */}
+        <div className="flex flex-wrap gap-3 justify-end">
+          <Button variant="outline" onClick={() => navigate("/clients/create")}>
+            Nouveau client
+          </Button>
+          <Button onClick={() => navigate("/projects/create")}>
+            Nouveau projet
+          </Button>
         </div>
+
       </div>
     </EnhancedLayout>
   );
