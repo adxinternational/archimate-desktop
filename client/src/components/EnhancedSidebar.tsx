@@ -3,7 +3,8 @@ import { Link, useLocation } from 'wouter';
 import {
   ChevronDown, LayoutDashboard, FolderOpen, Users, Hammer, Building2,
   FileText, CheckSquare, Bell, Settings, LogOut, Menu, X,
-  TrendingUp, Clock, DollarSign, MessageSquare, HelpCircle
+  TrendingUp, Clock, DollarSign, MessageSquare, BarChart2,
+  CalendarDays, Map, Cpu, ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -12,193 +13,175 @@ interface NavItem {
   label: string;
   icon?: React.ReactNode;
   href?: string;
-  children?: NavItem[];
+  badge?: number;
 }
 
-const NAVIGATION: NavItem[] = [
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+const NAVIGATION: NavSection[] = [
   {
     label: 'GÉNÉRAL',
-    children: [
-      { label: 'Tableau de bord', icon: <LayoutDashboard size={18} />, href: '/' },
-      { label: 'Opportunités', icon: <TrendingUp size={18} />, href: '/opportunities' },
-      { label: 'Projets', icon: <FolderOpen size={18} />, href: '/projects' },
-    ]
+    items: [
+      { label: 'Tableau de bord', icon: <LayoutDashboard size={16} />, href: '/' },
+      { label: 'Opportunités', icon: <TrendingUp size={16} />, href: '/opportunities' },
+      { label: 'Leads CRM', icon: <Users size={16} />, href: '/crm/leads' },
+    ],
   },
   {
-    label: 'ÉQUIPE',
-    children: [
-      { label: 'Collaborateurs', icon: <Users size={18} />, href: '/team' },
-      { label: 'Planning', icon: <Clock size={18} />, href: '/planning' },
-      { label: 'Temps', icon: <Clock size={18} />, href: '/time-tracking' },
-    ]
+    label: 'PROJETS',
+    items: [
+      { label: 'Projets', icon: <FolderOpen size={16} />, href: '/projects' },
+      { label: 'Planning (Gantt)', icon: <CalendarDays size={16} />, href: '/gantt' },
+      { label: 'Économie', icon: <DollarSign size={16} />, href: '/economy' },
+      { label: 'BIM & Documents', icon: <Cpu size={16} />, href: '/bim' },
+      { label: 'Validation', icon: <ShieldCheck size={16} />, href: '/validation' },
+    ],
   },
   {
-    label: 'GESTION',
-    children: [
-      { label: 'Clients', icon: <Users size={18} />, href: '/clients' },
-      { label: 'Coûts', icon: <DollarSign size={18} />, href: '/costs' },
-      { label: 'Factures', icon: <FileText size={18} />, href: '/invoices' },
-      { label: 'Finances', icon: <TrendingUp size={18} />, href: '/finances' },
-      { label: 'Rapports', icon: <FileText size={18} />, href: '/reports' },
-    ]
+    label: 'CLIENTS',
+    items: [
+      { label: 'Clients', icon: <Building2 size={16} />, href: '/clients' },
+    ],
   },
   {
-    label: 'CHANTIER',
-    children: [
-      { label: 'Chantiers', icon: <Hammer size={18} />, href: '/sites' },
-      { label: 'Journal', icon: <FileText size={18} />, href: '/site-journal' },
-      { label: 'Réunions', icon: <MessageSquare size={18} />, href: '/meetings' },
-      { label: 'Incidents', icon: <Bell size={18} />, href: '/incidents' },
-    ]
+    label: 'CHANTIERS',
+    items: [
+      { label: 'Chantiers', icon: <Hammer size={16} />, href: '/sites' },
+      { label: 'Gestion chantiers', icon: <Map size={16} />, href: '/site-management' },
+    ],
   },
   {
-    label: 'COLLABORATION',
-    children: [
-      { label: 'Tâches', icon: <CheckSquare size={18} />, href: '/tasks' },
-      { label: 'Notes', icon: <MessageSquare size={18} />, href: '/notes' },
-      { label: 'Blog', icon: <FileText size={18} />, href: '/blog' },
-      { label: 'Notifications', icon: <Bell size={18} />, href: '/notifications' },
-    ]
+    label: 'CABINET',
+    items: [
+      { label: 'Équipe & Tâches', icon: <Users size={16} />, href: '/cabinet' },
+      { label: 'Rapports', icon: <BarChart2 size={16} />, href: '/reports' },
+      { label: 'Notifications', icon: <Bell size={16} />, href: '/notifications' },
+    ],
   },
-  {
-    label: 'BESOIN D\'AIDE ?',
-    children: [
-      { label: 'Configuration', icon: <Settings size={18} />, href: '/settings' },
-      { label: 'Documentation', icon: <HelpCircle size={18} />, href: '/docs' },
-    ]
-  }
 ];
 
 export function EnhancedSidebar() {
-  const [expanded, setExpanded] = useState<string[]>(['GÉNÉRAL', 'GESTION']);
+  const [expanded, setExpanded] = useState<string[]>(['GÉNÉRAL', 'PROJETS', 'CHANTIERS']);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
   const toggleSection = (label: string) => {
     setExpanded(prev =>
-      prev.includes(label)
-        ? prev.filter(s => s !== label)
-        : [...prev, label]
+      prev.includes(label) ? prev.filter(s => s !== label) : [...prev, label]
     );
   };
 
-  const isActive = (href?: string) => href && location === href;
+  const isActive = (href?: string) => {
+    if (!href) return false;
+    if (href === '/') return location === '/';
+    return location.startsWith(href);
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-white">ArchiMate</h1>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Building2 size={16} className="text-white" />
+            </div>
+            <h1 className="text-lg font-bold text-white">ArchiOS</h1>
+          </div>
           {mobileOpen && (
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="md:hidden"
-            >
-              <X size={20} />
+            <button onClick={() => setMobileOpen(false)} className="md:hidden text-white/60 hover:text-white">
+              <X size={18} />
             </button>
           )}
         </div>
         {user && (
-          <div className="text-sm text-sidebar-accent-foreground">
-            <p className="font-medium">{user.name}</p>
-            <p className="text-xs opacity-75">{user.email}</p>
+          <div className="text-sm">
+            <p className="font-medium text-white/90 truncate">{user.name}</p>
+            <p className="text-xs text-white/50 truncate">{user.email}</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-2">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         {NAVIGATION.map((section) => (
           <div key={section.label}>
-            {section.children ? (
-              <>
-                <button
-                  onClick={() => toggleSection(section.label)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-sidebar-accent-foreground hover:bg-sidebar-accent rounded transition-colors"
-                >
-                  <span>{section.label}</span>
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform ${
-                      expanded.includes(section.label) ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {expanded.includes(section.label) && (
-                  <div className="ml-2 space-y-1 mt-1">
-                    {section.children.map((item) => (
-                      <Link key={item.href} href={item.href || '#'}>
-                        <a
-                          className={`flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors ${
-                            isActive(item.href)
-                              ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                              : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                          }`}
-                        >
-                          {item.icon}
-                          <span>{item.label}</span>
-                        </a>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <Link href={section.href || '#'}>
-                <a className="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-                  {section.icon}
-                  <span>{section.label}</span>
-                </a>
-              </Link>
+            <button
+              onClick={() => toggleSection(section.label)}
+              className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-white/40 hover:text-white/70 transition-colors"
+            >
+              <span>{section.label}</span>
+              <ChevronDown
+                size={12}
+                className={`transition-transform ${expanded.includes(section.label) ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {expanded.includes(section.label) && (
+              <div className="space-y-0.5 mb-2">
+                {section.items.map((item) => (
+                  <Link key={item.href} href={item.href || '#'}>
+                    <a
+                      onClick={() => setMobileOpen(false)}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive(item.href)
+                          ? 'bg-blue-600 text-white font-medium'
+                          : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="opacity-80">{item.icon}</span>
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {item.badge ? (
+                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </a>
+                  </Link>
+                ))}
+              </div>
             )}
           </div>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-3 space-y-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
-          onClick={() => window.location.href = '/settings'}
-        >
-          <Settings size={18} className="mr-2" />
-          Paramètres
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+      <div className="border-t border-white/10 p-2 space-y-0.5">
+        <button
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
           onClick={logout}
         >
-          <LogOut size={18} className="mr-2" />
-          Déconnexion
-        </Button>
+          <LogOut size={16} />
+          <span>Déconnexion</span>
+        </button>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Mobile Toggle */}
+      {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 bg-primary text-white p-2 rounded"
+        className="md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg shadow-lg"
       >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 border-r border-border bg-sidebar">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:block w-56 shrink-0 bg-gray-900 border-r border-white/10 min-h-screen">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile sidebar */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-56 bg-gray-900">
             <SidebarContent />
           </aside>
         </div>
