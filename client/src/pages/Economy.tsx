@@ -1,338 +1,442 @@
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, TrendingDown, TrendingUp, DollarSign, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertTriangle, TrendingDown, TrendingUp, DollarSign, Plus, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EnhancedLayout } from "@/components/EnhancedLayout";
-import { useLocation } from "wouter";
+import { toast } from "sonner";
+
+const PHASES = ["esq", "aps", "apd", "pro", "dce", "exe", "det", "aor"] as const;
+const PHASE_LABELS: Record<string, string> = {
+  esq: "ESQ", aps: "APS", apd: "APD", pro: "PRO",
+  dce: "DCE", exe: "EXE", det: "DET", aor: "AOR",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-700",
+  approved: "bg-blue-100 text-blue-700",
+  in_progress: "bg-yellow-100 text-yellow-700",
+  completed: "bg-green-100 text-green-700",
+};
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Brouillon", approved: "Approuvé",
+  in_progress: "En cours", completed: "Terminé",
+};
+
+type NewEstimate = {
+  projectId: number;
+  phase: typeof PHASES[number];
+  category: string;
+  description: string;
+  estimatedAmount: string;
+};
 
 export default function Economy() {
-  const [, navigate] = useLocation();
-  const [selectedProject, setSelectedProject] = useState(1);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [form, setForm] = useState<Partial<NewEstimate>>({});
 
-  // Mock data
-  const projects = [
-    { id: 1, name: "Immeuble Centre-Ville", budgetTotal: 500000 },
-    { id: 2, name: "Centre Commercial", budgetTotal: 1200000 },
-    { id: 3, name: "Maison Individuelle", budgetTotal: 250000 },
-  ];
+  // ── Données réelles ──────────────────────────────────────
+  const { data: projects = [], isLoading: loadingProjects } = trpc.projects.list.useQuery();
 
-  const costEstimates = [
-    {
-      id: 1,
-      category: "Structure",
-      description: "Fondations et ossature béton",
-      phase: "EXE",
-      estimated: 150000,
-      actual: 155000,
-      status: "in_progress",
-    },
-    {
-      id: 2,
-      category: "MEP",
-      description: "Électricité, Plomberie, Chauffage",
-      phase: "EXE",
-      estimated: 120000,
-      actual: 118500,
-      status: "in_progress",
-    },
-    {
-      id: 3,
-      category: "Finitions",
-      description: "Peinture, revêtements, menuiseries",
-      phase: "DET",
-      estimated: 100000,
-      actual: 0,
-      status: "draft",
-    },
-    {
-      id: 4,
-      category: "Façade",
-      description: "Revêtement extérieur et isolation",
-      phase: "EXE",
-      estimated: 80000,
-      actual: 82000,
-      status: "in_progress",
-    },
-    {
-      id: 5,
-      category: "Toiture",
-      description: "Couverture et étanchéité",
-      phase: "EXE",
-      estimated: 50000,
-      actual: 50000,
-      status: "completed",
-    },
-  ];
+  const activeProject = selectedProjectId
+    ? projects.find(p => p.id === selectedProjectId)
+    : projects[0] ?? null;
 
-  const selectedProjectData = projects.find((p) => p.id === selectedProject);
-  const totalEstimated = costEstimates.reduce((sum, e) => sum + e.estimated, 0);
-  const totalActual = costEstimates.reduce((sum, e) => sum + e.actual, 0);
+  const { data: estimates = [], isLoading: loadingEstimates, refetch } =
+    trpc.economy.getCostEstimates.useQuery(
+      { projectId: activeProject?.id ?? 0 },
+      { enabled: !!activeProject?.id }
+    );
+
+  const { data: permits = [] } =
+    trpc.economy.getBuildingPermits.useQuery(
+      { projectId: activeProject?.id ?? 0 },
+      { enabled: !!activeProject?.id }
+    );
+
+  const createEstimate = trpc.economy.createCostEstimate.useMutation({
+    onSuccess: () => { refetch(); setShowAddDialog(false); setForm({}); toast.success("Estimation ajoutée"); },
+    onError: () => toast.error("Erreur lors de l'ajout"),
+  });
+
+  const updateEstimate = trpc.economy.updateCostEstimate.useMutation({
+    onSuccess: () => { refetch(); toast.success("Mis à jour"); },
+  });
+
+  // ── Calculs budgétaires ──────────────────────────────────
+  const totalEstimated = estimates.reduce((s, e) => s + parseFloat(e.estimatedAmount ?? "0"), 0);
+  const totalActual = estimates.reduce((s, e) => s + parseFloat(e.actualAmount ?? "0"), 0);
   const overrun = totalActual - totalEstimated;
-  const overrunPercentage = (overrun / totalEstimated) * 100;
+  const overrunPct = totalEstimated > 0 ? (overrun / totalEstimated) * 100 : 0;
+  const budgetTotal = activeProject?.budgetEstimated ?? 0;
 
-  const statusColors = {
-    draft: "bg-gray-100 text-gray-800",
-    approved: "bg-blue-100 text-blue-800",
-    in_progress: "bg-yellow-100 text-yellow-800",
-    completed: "bg-green-100 text-green-800",
-  };
+  function fmt(n: number) {
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  }
+
+  async function handleCreate() {
+    if (!activeProject || !form.phase || !form.category || !form.description || !form.estimatedAmount) return;
+    createEstimate.mutate({
+      projectId: activeProject.id,
+      phase: form.phase,
+      category: form.category,
+      description: form.description,
+      estimatedAmount: form.estimatedAmount,
+    });
+  }
+
+  if (loadingProjects) {
+    return (
+      <EnhancedLayout title="Économie de la Construction">
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          <Loader2 className="animate-spin mr-2" size={20} /> Chargement…
+        </div>
+      </EnhancedLayout>
+    );
+  }
 
   return (
     <EnhancedLayout title="Économie de la Construction">
-    <div>
-      <div className="max-w-7xl mx-auto">
+      <div className="space-y-6">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <p className="text-muted-foreground">
-              Suivi des coûts, estimations et alertes budgétaires
-            </p>
-          </div>
-          <Button size="lg" onClick={() => navigate("/economy/create")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nouvelle Estimation
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-sm">Suivi des coûts, estimations et alertes budgétaires</p>
+          <Button onClick={() => setShowAddDialog(true)} disabled={!activeProject}>
+            <Plus size={16} className="mr-2" /> Nouvelle estimation
           </Button>
         </div>
 
-        {/* Project Selector */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex gap-2 flex-wrap">
-              {projects.map((project) => (
-                <Button
-                  key={project.id}
-                  variant={selectedProject === project.id ? "default" : "outline"}
-                  onClick={() => setSelectedProject(project.id)}
-                >
-                  {project.name}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Budget Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {/* Sélecteur de projet */}
+        {projects.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">
+            Aucun projet. Créez d'abord un projet pour saisir des estimations.
+          </Card>
+        ) : (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Budget Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {selectedProjectData?.budgetTotal.toLocaleString()} €
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Estimé</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{totalEstimated.toLocaleString()} €</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {((totalEstimated / (selectedProjectData?.budgetTotal || 1)) * 100).toFixed(0)}% du budget
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Engagé</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{totalActual.toLocaleString()} €</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {((totalActual / (selectedProjectData?.budgetTotal || 1)) * 100).toFixed(0)}% du budget
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className={overrun > 0 ? "border-red-500" : ""}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Écart</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={`text-3xl font-bold ${overrun > 0 ? "text-red-600" : "text-green-600"}`}>
-                {overrun > 0 ? "+" : ""}{overrun.toLocaleString()} €
-              </p>
-              <p className={`text-xs mt-1 ${overrun > 0 ? "text-red-600" : "text-green-600"}`}>
-                {overrunPercentage > 0 ? "+" : ""}{overrunPercentage.toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Budget Alert */}
-        {overrun > 0 && (
-          <Card className="mb-6 border-red-500 bg-red-50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-red-900">Dépassement budgétaire détecté</p>
-                  <p className="text-sm text-red-700 mt-1">
-                    Le projet a dépassé l'estimation de {overrun.toLocaleString()} € ({overrunPercentage.toFixed(1)}%).
-                    Veuillez revoir les coûts ou augmenter le budget alloué.
-                  </p>
-                </div>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex gap-2 flex-wrap">
+                {projects.map(p => (
+                  <Button
+                    key={p.id}
+                    size="sm"
+                    variant={(activeProject?.id === p.id) ? "default" : "outline"}
+                    onClick={() => setSelectedProjectId(p.id)}
+                  >
+                    {p.name}
+                  </Button>
+                ))}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Cost Breakdown */}
-        <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="all">Tous les coûts</TabsTrigger>
-            <TabsTrigger value="in_progress">En cours</TabsTrigger>
-            <TabsTrigger value="completed">Complétés</TabsTrigger>
-          </TabsList>
+        {activeProject && (
+          <>
+            {/* KPI Budget */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Budget alloué</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{fmt(budgetTotal)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{activeProject.currentPhase.toUpperCase()}</p>
+                </CardContent>
+              </Card>
 
-          <TabsContent value="all" className="space-y-4">
-            {costEstimates.map((estimate) => {
-              const variance = estimate.actual - estimate.estimated;
-              const variancePercentage = (variance / estimate.estimated) * 100;
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total estimé</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{fmt(totalEstimated)}</p>
+                  {budgetTotal > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {((totalEstimated / budgetTotal) * 100).toFixed(0)}% du budget
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-              return (
-                <Card key={estimate.id}>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{estimate.category}</h3>
-                          <p className="text-sm text-muted-foreground">{estimate.description}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Badge className={statusColors[estimate.status as keyof typeof statusColors]}>
-                            {estimate.status}
-                          </Badge>
-                          <Badge variant="outline">{estimate.phase}</Badge>
-                        </div>
-                      </div>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total engagé</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{fmt(totalActual)}</p>
+                  {budgetTotal > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {((totalActual / budgetTotal) * 100).toFixed(0)}% du budget
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-                      {/* Budget Bars */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Estimé</p>
-                          <p className="text-lg font-bold text-foreground">
-                            {estimate.estimated.toLocaleString()} €
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Engagé</p>
-                          <p className={`text-lg font-bold ${variance > 0 ? "text-red-600" : "text-green-600"}`}>
-                            {estimate.actual.toLocaleString()} €
-                          </p>
-                          {estimate.actual > 0 && (
-                            <p className={`text-xs mt-1 ${variance > 0 ? "text-red-600" : "text-green-600"}`}>
-                              {variance > 0 ? "+" : ""}{variance.toLocaleString()} € ({variancePercentage.toFixed(1)}%)
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Progress */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-medium text-muted-foreground">Progression</p>
-                          <p className="text-xs font-semibold text-foreground">
-                            {estimate.actual > 0 ? ((estimate.actual / estimate.estimated) * 100).toFixed(0) : 0}%
-                          </p>
-                        </div>
-                        <Progress
-                          value={estimate.actual > 0 ? (estimate.actual / estimate.estimated) * 100 : 0}
-                          className="h-2"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="in_progress">
-            {costEstimates
-              .filter((e) => e.status === "in_progress")
-              .map((estimate) => (
-                <Card key={estimate.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-foreground">{estimate.category}</h3>
-                        <p className="text-sm text-muted-foreground">{estimate.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{estimate.actual.toLocaleString()} €</p>
-                        <p className="text-xs text-muted-foreground">
-                          Estimé: {estimate.estimated.toLocaleString()} €
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-          </TabsContent>
-
-          <TabsContent value="completed">
-            {costEstimates
-              .filter((e) => e.status === "completed")
-              .map((estimate) => (
-                <Card key={estimate.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-foreground">{estimate.category}</h3>
-                        <p className="text-sm text-muted-foreground">{estimate.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">{estimate.actual.toLocaleString()} €</p>
-                        <p className="text-xs text-green-600">
-                          Économie: {(estimate.estimated - estimate.actual).toLocaleString()} €
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-          </TabsContent>
-        </Tabs>
-
-        {/* Summary Chart */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Résumé par Phase</CardTitle>
-            <CardDescription>Distribution des coûts par phase architecturale</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {["ESQ", "APS", "APD", "PRO", "DCE", "EXE", "DET", "AOR"].map((phase) => {
-                const phaseEstimates = costEstimates.filter((e) => e.phase === phase);
-                const phaseTotal = phaseEstimates.reduce((sum, e) => sum + e.estimated, 0);
-                const phaseActual = phaseEstimates.reduce((sum, e) => sum + e.actual, 0);
-
-                return phaseTotal > 0 ? (
-                  <div key={phase}>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">{phase}</p>
-                      <p className="text-sm font-semibold">
-                        {phaseActual.toLocaleString()} € / {phaseTotal.toLocaleString()} €
-                      </p>
-                    </div>
-                    <Progress value={(phaseActual / phaseTotal) * 100} className="h-2" />
-                  </div>
-                ) : null;
-              })}
+              <Card className={overrun > 0 ? "border-red-400" : "border-green-400"}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                    {overrun > 0 ? <TrendingDown size={14} className="text-red-500" /> : <TrendingUp size={14} className="text-green-500" />}
+                    Écart
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className={`text-2xl font-bold ${overrun > 0 ? "text-red-600" : "text-green-600"}`}>
+                    {overrun > 0 ? "+" : ""}{fmt(overrun)}
+                  </p>
+                  <p className={`text-xs mt-1 ${overrun > 0 ? "text-red-500" : "text-green-500"}`}>
+                    {overrunPct > 0 ? "+" : ""}{overrunPct.toFixed(1)}%
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Alerte dépassement */}
+            {overrun > 0 && (
+              <Card className="border-red-400 bg-red-50">
+                <CardContent className="pt-4 flex items-start gap-3">
+                  <AlertTriangle size={18} className="text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-red-900 text-sm">Dépassement budgétaire détecté</p>
+                    <p className="text-xs text-red-700 mt-0.5">
+                      {fmt(overrun)} de dépassement ({overrunPct.toFixed(1)}%). Vérifiez les postes en rouge.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Estimations par statut */}
+            <Tabs defaultValue="all">
+              <TabsList>
+                <TabsTrigger value="all">Tous ({estimates.length})</TabsTrigger>
+                <TabsTrigger value="in_progress">En cours</TabsTrigger>
+                <TabsTrigger value="draft">Brouillons</TabsTrigger>
+                <TabsTrigger value="completed">Terminés</TabsTrigger>
+              </TabsList>
+
+              {["all", "in_progress", "draft", "completed"].map(tab => (
+                <TabsContent key={tab} value={tab} className="space-y-3 mt-4">
+                  {loadingEstimates ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <Loader2 className="animate-spin mx-auto mb-2" size={20} />
+                    </div>
+                  ) : estimates.filter(e => tab === "all" || e.status === tab).length === 0 ? (
+                    <Card className="p-8 text-center text-muted-foreground text-sm">
+                      Aucune estimation{tab !== "all" ? ` dans ce statut` : ""}. Ajoutez-en une.
+                    </Card>
+                  ) : (
+                    estimates
+                      .filter(e => tab === "all" || e.status === tab)
+                      .map(estimate => {
+                        const est = parseFloat(estimate.estimatedAmount ?? "0");
+                        const act = parseFloat(estimate.actualAmount ?? "0");
+                        const diff = act - est;
+                        const pct = est > 0 ? (act / est) * 100 : 0;
+                        return (
+                          <Card key={estimate.id}>
+                            <CardContent className="pt-4 space-y-3">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm">{estimate.category}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{estimate.description}</p>
+                                </div>
+                                <div className="flex gap-2 shrink-0">
+                                  <Badge className={STATUS_COLORS[estimate.status ?? "draft"] + " text-xs"}>
+                                    {STATUS_LABELS[estimate.status ?? "draft"]}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {PHASE_LABELS[estimate.phase] ?? estimate.phase.toUpperCase()}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Estimé</p>
+                                  <p className="font-bold text-sm">{fmt(est)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Engagé</p>
+                                  <p className={`font-bold text-sm ${diff > 0 ? "text-red-600" : act > 0 ? "text-green-600" : ""}`}>
+                                    {act > 0 ? fmt(act) : "—"}
+                                  </p>
+                                  {act > 0 && diff !== 0 && (
+                                    <p className={`text-xs ${diff > 0 ? "text-red-500" : "text-green-500"}`}>
+                                      {diff > 0 ? "+" : ""}{fmt(diff)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {act > 0 && (
+                                <div>
+                                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Avancement</span>
+                                    <span>{pct.toFixed(0)}%</span>
+                                  </div>
+                                  <Progress value={Math.min(pct, 100)} className="h-1.5" />
+                                </div>
+                              )}
+
+                              {/* Actions rapides */}
+                              {estimate.status !== "completed" && (
+                                <div className="flex gap-2 pt-1">
+                                  {estimate.status === "draft" && (
+                                    <Button size="sm" variant="outline" className="text-xs h-7"
+                                      onClick={() => updateEstimate.mutate({ id: estimate.id, status: "approved" })}>
+                                      Approuver
+                                    </Button>
+                                  )}
+                                  {estimate.status === "approved" && (
+                                    <Button size="sm" variant="outline" className="text-xs h-7"
+                                      onClick={() => updateEstimate.mutate({ id: estimate.id, status: "in_progress" })}>
+                                      Démarrer
+                                    </Button>
+                                  )}
+                                  {estimate.status === "in_progress" && (
+                                    <Button size="sm" variant="outline" className="text-xs h-7"
+                                      onClick={() => updateEstimate.mutate({ id: estimate.id, status: "completed" })}>
+                                      Terminer
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+
+            {/* Résumé par phase */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Répartition par phase</CardTitle>
+                <CardDescription>Coûts estimés vs engagés par phase architecturale</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {PHASES.map(phase => {
+                  const phaseEst = estimates.filter(e => e.phase === phase);
+                  if (phaseEst.length === 0) return null;
+                  const est = phaseEst.reduce((s, e) => s + parseFloat(e.estimatedAmount ?? "0"), 0);
+                  const act = phaseEst.reduce((s, e) => s + parseFloat(e.actualAmount ?? "0"), 0);
+                  return (
+                    <div key={phase}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="font-medium">{PHASE_LABELS[phase]}</span>
+                        <span className="text-muted-foreground">{act > 0 ? fmt(act) + " / " : ""}{fmt(est)}</span>
+                      </div>
+                      <Progress value={est > 0 && act > 0 ? Math.min((act / est) * 100, 100) : 0} className="h-1.5" />
+                    </div>
+                  );
+                })}
+                {estimates.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucune estimation pour ce projet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Permis de construire */}
+            {permits.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Procédures administratives</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {permits.map(p => (
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{p.type}</p>
+                        <p className="text-xs text-muted-foreground">{p.referenceNumber}</p>
+                      </div>
+                      <Badge className={
+                        p.status === "approved" ? "bg-green-100 text-green-700" :
+                        p.status === "rejected" ? "bg-red-100 text-red-700" :
+                        p.status === "submitted" ? "bg-blue-100 text-blue-700" :
+                        "bg-gray-100 text-gray-700"
+                      }>
+                        {p.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
       </div>
-    </div>
+
+      {/* Dialog — Nouvelle estimation */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nouvelle estimation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Phase</label>
+              <Select onValueChange={v => setForm(f => ({ ...f, phase: v as typeof PHASES[number] }))}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Sélectionner une phase" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PHASES.map(p => (
+                    <SelectItem key={p} value={p}>{PHASE_LABELS[p]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Catégorie</label>
+              <Input
+                className="mt-1"
+                placeholder="Ex: Structure, MEP, Finitions…"
+                value={form.category ?? ""}
+                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                className="mt-1"
+                placeholder="Description du poste de coût"
+                value={form.description ?? ""}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Montant estimé (€)</label>
+              <Input
+                className="mt-1"
+                type="number"
+                placeholder="0"
+                value={form.estimatedAmount ?? ""}
+                onChange={e => setForm(f => ({ ...f, estimatedAmount: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Annuler</Button>
+            <Button
+              onClick={handleCreate}
+              disabled={createEstimate.isPending || !form.phase || !form.category || !form.description || !form.estimatedAmount}
+            >
+              {createEstimate.isPending ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
+              Ajouter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </EnhancedLayout>
   );
 }
