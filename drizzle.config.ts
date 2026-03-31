@@ -6,10 +6,13 @@ if (!connectionString) {
 }
 
 export default defineConfig({
+  // Un seul schéma — schema_extended_v2.ts est supprimé et fusionné ici
   schema: "./drizzle/schema.ts",
-  out: "./drizzle",
+  out: "./drizzle/migrations",
   dialect: "mysql",
   dbCredentials: {
     url: connectionString,
   },
+  verbose: true,
+  strict: true,
 });
