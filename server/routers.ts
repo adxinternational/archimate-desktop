@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { aiRouter } from "./routers_ai";
+import { mvpRouter } from "./routers_mvp";
 import { nanoid } from "nanoid";
 import { storagePut } from "./storage";
 import {
@@ -41,6 +42,7 @@ const PHASES = ["esq", "aps", "apd", "pro", "dce", "exe", "det", "aor"] as const
 export const appRouter = router({
   system: systemRouter,
   ai: aiRouter,
+  mvp: mvpRouter,
 
   // ── Auth ───────────────────────────────────────────────────
   auth: router({
