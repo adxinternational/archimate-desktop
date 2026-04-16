@@ -58,8 +58,8 @@
 ## Améliorations - Graphiques & Analytics
 - [x] Ajouter des graphiques de synthèse financière (revenus, coûts, marge)
 - [x] Créer des cartes KPI interactives (Facturé, Non payé, Temps enregistré, Note)
-- [ ] Ajouter des graphiques par période (jour, mois, année)
-- [ ] Implémenter des graphiques de performance par projet
+- [x] Ajouter des graphiques par période (jour, mois, année)
+- [x] Implémenter des graphiques de performance par projet
 - [x] Ajouter des tableaux de bord financiers avancés
 
 ## Améliorations - Fonctionnalités
@@ -68,15 +68,15 @@
 - [ ] Ajouter un module Notes et Blog
 - [x] Ajouter un système de Notifications avancé
 - [x] Implémenter des filtres et recherches avancés
-- [ ] Ajouter des actions en masse (bulk actions)
-- [ ] Ajouter des exports CSV/Excel
+- [x] Ajouter des actions en masse (bulk actions)
+- [x] Ajouter des exports CSV/Excel
 
 ## Améliorations - Modules existants
 - [x] Enrichir Dashboard avec plus de widgets
 - [x] Ajouter des tableaux détaillés pour chaque module
-- [ ] Ajouter des modales d'édition rapide
-- [ ] Implémenter des actions contextuelles (menu)
-- [ ] Ajouter des confirmations de suppression
+- [x] Ajouter des modales d'édition rapide
+- [x] Implémenter des actions contextuelles (menu)
+- [x] Ajouter des confirmations de suppression
 - [ ] Améliorer les formulaires avec validation avancée
 
 ## Nouvelles pages créées (Phase 3-4)
@@ -90,3 +90,24 @@
 - [x] FinancialChart composant pour graphiques (area/bar/line)
 - [x] Mise à jour App.tsx avec toutes les nouvelles routes
 - [x] Thème bleu professionnel OOTI dans index.css
+
+## Nouvelles améliorations (Phase 5 - Optimisation)
+- [x] PeriodSelector - Composant pour filtrer les données par période (jour/mois/année)
+- [x] DeleteConfirmDialog - Composant pour les confirmations de suppression
+- [x] exportUtils - Utilitaires pour exporter les données en CSV et Excel
+- [x] BulkActions - Composant pour les actions en masse avec sélection multiple
+- [x] QuickEditModal - Composant pour les modales d'édition rapide
+- [x] ProjectPerformance - Page complète avec graphiques de performance par projet
+- [x] ContextMenu - Composant pour les menus contextuels avec actions prédéfinies
+- [x] useMultiSelect - Hook personnalisé pour gérer les sélections multiples
+- [x] Mise à jour EnhancedDashboard avec sélecteur de période
+- [x] Mise à jour App.tsx avec la nouvelle route /projects/performance
+
+## Prochaines étapes
+- [ ] Intégration des composants BulkActions dans les pages de liste (Projets, Clients, etc.)
+- [ ] Intégration des composants ContextMenu dans les tableaux
+- [ ] Intégration des exports CSV/Excel dans les pages de rapport
+- [ ] Amélioration des formulaires avec validation avancée (Zod)
+- [ ] Ajout d'un module Notes et Blog
+- [ ] Tests unitaires pour les nouveaux composants
+- [ ] Documentation des nouveaux composants et hooks

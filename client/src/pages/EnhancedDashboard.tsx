@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { EnhancedLayout } from "@/components/EnhancedLayout";
 import { FinancialChart } from "@/components/FinancialChart";
+import { PeriodSelector, type PeriodType } from "@/components/PeriodSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ function fmt(n: number) {
 
 export default function EnhancedDashboard() {
   const [, navigate] = useLocation();
+  const [period, setPeriod] = useState<PeriodType>("month");
 
   // ── Toutes les données réelles ───────────────────────────
   const { data: projects = [], isLoading: loadingProj } = trpc.projects.list.useQuery();
@@ -175,14 +177,38 @@ export default function EnhancedDashboard() {
           </Card>
         </div>
 
-        {/* Graphique financier */}
+        {/* Graphique financier avec sélecteur de période */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Synthèse financière</h3>
+            <PeriodSelector period={period} onPeriodChange={setPeriod} />
+          </div>
+          {chartData.some(d => d.revenue > 0 || d.costs > 0) ? (
+            <FinancialChart
+              data={chartData}
+              title=""
+              type="area"
+              height={280}
+            />
+          ) : (
+            <Card className="p-8 text-center">
+              <TrendingUp size={32} className="mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">Le graphique financier apparaîtra dès que vous aurez des factures et dépenses.</p>
+            </Card>
+          )
+        }
+        </div>
+        
+        {/* Graphique financier ancien */}
         {chartData.some(d => d.revenue > 0 || d.costs > 0) ? (
-          <FinancialChart
-            data={chartData}
-            title="Synthèse financière — 6 derniers mois"
-            type="area"
-            height={280}
-          />
+          <div style={{ display: "none" }}>
+            <FinancialChart
+              data={chartData}
+              title="Synthèse financière — 6 derniers mois"
+              type="area"
+              height={280}
+            />
+          </div>
         ) : (
           <Card className="p-8 text-center">
             <TrendingUp size={32} className="mx-auto text-muted-foreground/40 mb-3" />

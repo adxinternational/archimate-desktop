@@ -29,6 +29,7 @@ import Economy from "@/pages/Economy";
 import BIM from "@/pages/BIM";
 import GanttPage from "@/pages/GanttPage";
 import SiteManagement from "@/pages/SiteManagement";
+import ProjectPerformance from "@/pages/ProjectPerformance";
 import NotFound from "@/pages/NotFound";
 
 // ── Guard : redirige vers /login si non authentifié ──────────
@@ -92,9 +93,12 @@ function Router() {
         {() => <ProtectedRoute component={ProjectDetail} />}
       </Route>
 
-      {/* ── Économie ────────────────────────────────────── */}
+      {/* ── Économie ──────────────────────── */}
       <Route path="/economy">
         {() => <ProtectedRoute component={Economy} />}
+      </Route>
+      <Route path="/projects/performance">
+        {() => <ProtectedRoute component={ProjectPerformance} />}
       </Route>
 
       {/* ── Chantiers ───────────────────────────────────── */}
