@@ -3,8 +3,8 @@
  * Intégration basique pour le versioning et la gestion des fichiers IFC/RVT
  */
 
-import { db } from "./_core/index";
-import { sql, eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { sql, eq, and, desc } from "drizzle-orm";
 import { documents, projects } from "../drizzle/schema";
 
 export interface BIMModel {
@@ -25,11 +25,14 @@ export interface BIMModel {
  * Récupère tous les modèles BIM d'un projet
  */
 export async function getBIMModelsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND category = 'bim'`)
-    .orderBy(sql`version DESC`);
+    .where(and(eq(documents.projectId, projectId), eq(documents.category, 'bim')))
+    .orderBy(desc(documents.version));
 }
 
 /**
@@ -43,11 +46,14 @@ export async function uploadBIMModel(
   format: "ifc" | "rvt" | "dwg" | "pdf",
   description?: string
 ) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   // Récupérer la version précédente
   const previousVersions = await db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND category = 'bim' AND name = ${name}`);
+    .where(and(eq(documents.projectId, projectId), eq(documents.category, 'bim'), eq(documents.name, name)));
 
   const nextVersion = previousVersions.length > 0 
     ? Math.max(...previousVersions.map(d => d.version || 1)) + 1 
@@ -69,11 +75,14 @@ export async function uploadBIMModel(
  * Récupère la dernière version d'un modèle BIM
  */
 export async function getLatestBIMModel(projectId: number, modelName: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const models = await db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND category = 'bim' AND name = ${modelName}`)
-    .orderBy(sql`version DESC`);
+    .where(and(eq(documents.projectId, projectId), eq(documents.category, 'bim'), eq(documents.name, modelName)))
+    .orderBy(desc(documents.version));
 
   return models.length > 0 ? models[0] : null;
 }
@@ -82,17 +91,23 @@ export async function getLatestBIMModel(projectId: number, modelName: string) {
  * Récupère l'historique des versions d'un modèle BIM
  */
 export async function getBIMModelVersionHistory(projectId: number, modelName: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND category = 'bim' AND name = ${modelName}`)
-    .orderBy(sql`version DESC`);
+    .where(and(eq(documents.projectId, projectId), eq(documents.category, 'bim'), eq(documents.name, modelName)))
+    .orderBy(desc(documents.version));
 }
 
 /**
  * Supprime une version spécifique d'un modèle BIM
  */
 export async function deleteBIMModelVersion(documentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db.delete(documents).where(eq(documents.id, documentId));
 }
 
@@ -100,10 +115,13 @@ export async function deleteBIMModelVersion(documentId: number) {
  * Récupère les statistiques BIM d'un projet
  */
 export async function getBIMProjectStats(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const allBIMDocs = await db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND category = 'bim'`);
+    .where(and(eq(documents.projectId, projectId), eq(documents.category, 'bim')));
 
   const models = new Set(allBIMDocs.map(d => d.name));
   const totalVersions = allBIMDocs.length;
@@ -123,8 +141,11 @@ export async function getBIMProjectStats(projectId: number) {
  * Récupère les documents liés à un modèle BIM (plans, rapports, etc.)
  */
 export async function getRelatedDocuments(projectId: number, modelName: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db
     .select()
     .from(documents)
-    .where(sql`projectId = ${projectId} AND (category = 'plan' OR category = 'report' OR category = 'photo')`);
+    .where(and(eq(documents.projectId, projectId), sql`(category = 'plan' OR category = 'report' OR category = 'photo')`));
 }

@@ -3,8 +3,8 @@
  * Gestion avancée du pipeline de vente et conversion leads → clients
  */
 
-import { db } from "./_core/index";
-import { sql, eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { sql, eq, inArray } from "drizzle-orm";
 import { leads, clients, exchangeHistory, projects } from "../drizzle/schema";
 
 export interface SalesPipelineMetrics {
@@ -19,6 +19,9 @@ export interface SalesPipelineMetrics {
  * Récupère les métriques du pipeline de vente
  */
 export async function getSalesPipelineMetrics(): Promise<SalesPipelineMetrics> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const allLeads = await db.select().from(leads);
   const wonLeads = allLeads.filter(l => l.status === "won");
   const lostLeads = allLeads.filter(l => l.status === "lost");
@@ -60,10 +63,13 @@ export async function getSalesPipelineMetrics(): Promise<SalesPipelineMetrics> {
  * Récupère les leads qualifiés (prêts pour une proposition)
  */
 export async function getQualifiedLeads() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db
     .select()
     .from(leads)
-    .where(sql`status IN ('qualified', 'proposal', 'negotiation')`);
+    .where(inArray(leads.status, ['qualified', 'proposal', 'negotiation']));
 }
 
 /**
@@ -73,6 +79,9 @@ export async function convertLeadToClientWithProject(
   leadId: number,
   projectName?: string
 ) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const lead = await db.select().from(leads).where(eq(leads.id, leadId));
   
   if (!lead.length) {
@@ -132,6 +141,9 @@ export async function logCRMInteraction(
   subject: string,
   content: string
 ) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db.insert(exchangeHistory).values({
     leadId,
     clientId,
@@ -147,17 +159,23 @@ export async function logCRMInteraction(
  * Récupère l'historique des interactions pour un lead
  */
 export async function getLeadInteractionHistory(leadId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   return db
     .select()
     .from(exchangeHistory)
     .where(eq(exchangeHistory.leadId, leadId))
-    .orderBy(sql`date DESC`);
+    .orderBy(desc(exchangeHistory.date));
 }
 
 /**
  * Récupère les leads en retard (pas d'interaction depuis X jours)
  */
 export async function getOverdueLeads(daysThreshold: number = 7) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const allLeads = await db.select().from(leads);
   const now = new Date();
   const threshold = new Date(now.getTime() - daysThreshold * 24 * 60 * 60 * 1000);

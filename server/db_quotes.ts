@@ -3,8 +3,8 @@
  * Inspiré par Batichiffrage - gestion structurée des estimatifs par lots
  */
 
-import { db } from "./_core/index";
-import { sql } from "drizzle-orm";
+import { getDb } from "./db";
+import { sql, eq, and } from "drizzle-orm";
 import { costEstimates, projects } from "../drizzle/schema";
 import { PHASES, Phase } from "../drizzle/schema";
 
@@ -33,11 +33,14 @@ export interface Quote {
  * Récupère tous les devis d'un projet
  */
 export async function getQuotesByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const estimates = await db
     .select()
     .from(costEstimates)
-    .where(sql`projectId = ${projectId}`)
-    .orderBy(sql`phase ASC`);
+    .where(eq(costEstimates.projectId, projectId))
+    .orderBy(costEstimates.phase);
 
   // Grouper par phase pour une vue structurée
   const grouped: Record<Phase, typeof estimates> = {} as any;
@@ -55,6 +58,9 @@ export async function createQuote(
   projectId: number,
   lineItems: QuoteLineItem[]
 ) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const quoteNumber = `DEVIS-${Date.now()}`;
   const totalAmount = lineItems.reduce((sum, item) => sum + item.total, 0);
 
@@ -90,10 +96,13 @@ export async function updateQuoteStatus(
   projectId: number,
   status: "draft" | "sent" | "accepted" | "rejected"
 ) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const estimates = await db
     .select()
     .from(costEstimates)
-    .where(sql`projectId = ${projectId}`);
+    .where(eq(costEstimates.projectId, projectId));
 
   const newStatus = status === "accepted" ? "approved" : "draft";
 
@@ -101,7 +110,7 @@ export async function updateQuoteStatus(
     await db
       .update(costEstimates)
       .set({ status: newStatus })
-      .where(sql`id = ${estimate.id}`);
+      .where(eq(costEstimates.id, estimate.id));
   }
 
   return { success: true, status };
@@ -111,10 +120,13 @@ export async function updateQuoteStatus(
  * Calcule le total d'un devis par phase
  */
 export async function getQuoteTotalByPhase(projectId: number, phase: Phase) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
   const estimates = await db
     .select()
     .from(costEstimates)
-    .where(sql`projectId = ${projectId} AND phase = ${phase}`);
+    .where(and(eq(costEstimates.projectId, projectId), eq(costEstimates.phase, phase)));
 
   return estimates.reduce((sum, e) => sum + parseFloat(e.estimatedAmount?.toString() || "0"), 0);
 }
