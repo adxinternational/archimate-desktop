@@ -4,9 +4,4 @@
     { "source": "/api/(.*)", "destination": "/server/_core/index.ts" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "functions": {
-    "server/_core/index.ts": {
-      "runtime": "@vercel/node@5.x"
-    }
-  }
-}
+  
