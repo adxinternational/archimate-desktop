@@ -4,7 +4,7 @@
  */
 
 import { getDb } from "./db";
-import { sql, eq, inArray } from "drizzle-orm";
+import { sql, eq, inArray, desc } from "drizzle-orm";
 import { leads, clients, exchangeHistory, projects } from "../drizzle/schema";
 
 export interface SalesPipelineMetrics {
