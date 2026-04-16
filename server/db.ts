@@ -8,7 +8,6 @@ import {
   projects, InsertProject,
   projectPhases, InsertProjectPhase,
   documents, InsertDocument,
-  comments, InsertComment,
   adminProcedures, InsertAdminProcedure,
   costEstimates, InsertCostEstimate,
   constructionSites, InsertConstructionSite,
@@ -249,8 +248,8 @@ export async function deleteDocument(id: number) {
   await db.delete(documents).where(eq(documents.id, id));
 }
 
-// ── Comments ──────────────────────────────────────────────────
-
+// ── Comments (Disabled - Table not in schema) ──────────────────
+/*
 export async function getCommentsByProject(projectId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -268,6 +267,7 @@ export async function deleteComment(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(comments).where(eq(comments.id, id));
 }
+*/
 
 // ── Admin Procedures ──────────────────────────────────────────
 

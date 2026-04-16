@@ -10,7 +10,7 @@ import {
   getAllProjects, getProjectById, getProjectsByClient, createProject, updateProject, deleteProject,
   getProjectPhases, updateProjectPhase,
   getDocumentsByProject, createDocument, deleteDocument,
-  getCommentsByProject, createComment, deleteComment,
+  // getCommentsByProject, createComment, deleteComment,
   getProceduresByProject, createProcedure, updateProcedure, deleteProcedure,
   getAllSites, getSiteById, getSitesByProject, createSite, updateSite, deleteSite,
   getJournalBySite, createJournalEntry, deleteJournalEntry,
@@ -209,11 +209,13 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => createDocument(input)),
     deleteDocument: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteDocument(input.id)),
+    /*
     comments: publicProcedure.input(z.object({ projectId: z.number() })).query(({ input }) => getCommentsByProject(input.projectId)),
     addComment: publicProcedure
       .input(z.object({ projectId: z.number(), authorName: z.string(), content: z.string() }))
       .mutation(({ input }) => createComment(input)),
     deleteComment: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteComment(input.id)),
+    */
     procedures: publicProcedure.input(z.object({ projectId: z.number() })).query(({ input }) => getProceduresByProject(input.projectId)),
     addProcedure: publicProcedure
       .input(z.object({
