@@ -183,7 +183,7 @@ export const phaseChecklists = mysqlTable("phase_checklists", {
     completed: boolean;
     dueDate?: string;
     assignee?: string;
-  }>>().default([]),
+  }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -233,21 +233,6 @@ export type Document = typeof documents.$inferSelect;
 export type InsertDocument = typeof documents.$inferInsert;
 
 // ============================================================
-// Comments
-// ============================================================
-export const comments = mysqlTable("comments", {
-  id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  documentId: int("documentId").references(() => documents.id, { onDelete: "set null" }),
-  authorName: varchar("authorName", { length: 255 }).notNull(),
-  content: text("content").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Comment = typeof comments.$inferSelect;
-export type InsertComment = typeof comments.$inferInsert;
-
-// ============================================================
 // Administrative Procedures (Permis de Construire, DP, AT…)
 // ============================================================
 export const adminProcedures = mysqlTable("admin_procedures", {
@@ -264,7 +249,11 @@ export const adminProcedures = mysqlTable("admin_procedures", {
   notes: text("notes"),
   fileUrl: text("fileUrl"),
   fileKey: text("fileKey"),
-  checklist: json("checklist").$type<Array<{ id: string; label: string; completed: boolean }>>().default([]),
+  checklist: json("checklist").$type<Array<{
+    id: string;
+    label: string;
+    completed: boolean;
+  }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -279,11 +268,11 @@ export const costEstimates = mysqlTable("cost_estimates", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
   phase: mysqlEnum("phase", PHASES).notNull(),
-  category: varchar("category", { length: 100 }).notNull(),
-  description: varchar("description", { length: 255 }).notNull(),
-  estimatedAmount: decimal("estimatedAmount", { precision: 12, scale: 2 }).notNull(),
-  actualAmount: decimal("actualAmount", { precision: 12, scale: 2 }),
-  status: mysqlEnum("status", ["draft", "approved", "in_progress", "completed"]).default("draft").notNull(),
+  category: varchar("category", { length: 255 }).notNull(),
+  description: text("description"),
+  estimatedAmount: decimal("estimatedAmount", { precision: 15, scale: 2 }).default("0"),
+  actualAmount: decimal("actualAmount", { precision: 15, scale: 2 }).default("0"),
+  status: mysqlEnum("status", ["draft", "approved", "rejected"]).default("draft").notNull(),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -300,10 +289,9 @@ export const constructionSites = mysqlTable("construction_sites", {
   projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   address: text("address"),
-  progress: int("progress").default(0),
+  status: mysqlEnum("status", ["active", "completed", "suspended"]).default("active").notNull(),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),
-  status: mysqlEnum("status", ["planning", "active", "paused", "completed"]).default("planning").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -312,17 +300,16 @@ export type ConstructionSite = typeof constructionSites.$inferSelect;
 export type InsertConstructionSite = typeof constructionSites.$inferInsert;
 
 // ============================================================
-// Site Journal Entries
+// Site Journal (Journal de Chantier)
 // ============================================================
 export const siteJournalEntries = mysqlTable("site_journal_entries", {
   id: int("id").autoincrement().primaryKey(),
   siteId: int("siteId").notNull().references(() => constructionSites.id, { onDelete: "cascade" }),
   date: timestamp("date").notNull(),
   weather: varchar("weather", { length: 100 }),
-  workDescription: text("workDescription").notNull(),
-  workers: int("workers"),
-  photos: json("photos").$type<string[]>().default([]),
-  notes: text("notes"),
+  temperature: float("temperature"),
+  content: text("content"),
+  author: varchar("author", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -330,26 +317,26 @@ export type SiteJournalEntry = typeof siteJournalEntries.$inferSelect;
 export type InsertSiteJournalEntry = typeof siteJournalEntries.$inferInsert;
 
 // ============================================================
-// Meeting Reports (Comptes-rendus de chantier)
+// Meeting Reports (Comptes-rendus de réunion)
 // ============================================================
 export const meetingReports = mysqlTable("meeting_reports", {
   id: int("id").autoincrement().primaryKey(),
-  siteId: int("siteId").notNull().references(() => constructionSites.id, { onDelete: "cascade" }),
+  siteId: int("siteId").references(() => constructionSites.id, { onDelete: "cascade" }),
   projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
-  date: timestamp("date").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
-  attendees: json("attendees").$type<string[]>().default([]),
-  summary: text("summary"),
-  decisions: json("decisions").$type<string[]>().default([]),
-  nextActions: json("nextActions").$type<Array<{ action: string; responsible: string; dueDate?: string }>>().default([]),
+  date: timestamp("date").notNull(),
+  location: varchar("location", { length: 255 }),
+  content: text("content"),
+  attendees: json("attendees").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type MeetingReport = typeof meetingReports.$inferSelect;
 export type InsertMeetingReport = typeof meetingReports.$inferInsert;
 
 // ============================================================
-// Incidents
+// Incidents (Réserves, Problèmes)
 // ============================================================
 export const incidents = mysqlTable("incidents", {
   id: int("id").autoincrement().primaryKey(),
@@ -357,9 +344,9 @@ export const incidents = mysqlTable("incidents", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
-  status: mysqlEnum("status", ["open", "in_progress", "resolved"]).default("open").notNull(),
-  date: timestamp("date").notNull(),
-  resolution: text("resolution"),
+  status: mysqlEnum("status", ["open", "in_progress", "resolved", "closed"]).default("open").notNull(),
+  dueDate: timestamp("dueDate"),
+  resolvedDate: timestamp("resolvedDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -368,45 +355,17 @@ export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = typeof incidents.$inferInsert;
 
 // ============================================================
-// Gantt Tasks (Planning)
-// ============================================================
-export const ganttTasks = mysqlTable("gantt_tasks", {
-  id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  siteId: int("siteId").references(() => constructionSites.id, { onDelete: "set null" }),
-  phase: mysqlEnum("phase", PHASES),
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  startDate: timestamp("startDate").notNull(),
-  endDate: timestamp("endDate").notNull(),
-  duration: int("duration"),
-  progress: int("progress").default(0),
-  assignedTo: int("assignedTo"),
-  dependencies: json("dependencies").$type<number[]>().default([]),
-  status: mysqlEnum("status", ["todo", "in_progress", "done", "blocked"]).default("todo").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type GanttTask = typeof ganttTasks.$inferSelect;
-export type InsertGanttTask = typeof ganttTasks.$inferInsert;
-
-// ============================================================
-// Enterprises / Sous-traitants
+// Enterprises (Entreprises de BTP)
 // ============================================================
 export const enterprises = mysqlTable("enterprises", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  siret: varchar("siret", { length: 20 }),
-  trade: varchar("trade", { length: 100 }).notNull(),   // Corps de métier
+  trade: varchar("trade", { length: 100 }), // Corps d'état
+  contactName: varchar("contactName", { length: 255 }),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 50 }),
   address: text("address"),
-  city: varchar("city", { length: 100 }),
-  contactName: varchar("contactName", { length: 255 }),
-  status: mysqlEnum("status", ["active", "inactive", "blacklisted"]).default("active").notNull(),
-  rating: int("rating"),   // 1-5
-  notes: text("notes"),
+  rating: float("rating"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -415,35 +374,27 @@ export type Enterprise = typeof enterprises.$inferSelect;
 export type InsertEnterprise = typeof enterprises.$inferInsert;
 
 // ============================================================
-// Site Enterprises (affectation chantier ↔ entreprise)
+// Site Enterprises (Lien Chantier-Entreprise)
 // ============================================================
 export const siteEnterprises = mysqlTable("site_enterprises", {
   id: int("id").autoincrement().primaryKey(),
   siteId: int("siteId").notNull().references(() => constructionSites.id, { onDelete: "cascade" }),
   enterpriseId: int("enterpriseId").notNull().references(() => enterprises.id, { onDelete: "cascade" }),
-  lot: varchar("lot", { length: 100 }),           // Ex: "Lot 1 — Gros œuvre"
-  contractAmount: decimal("contractAmount", { precision: 12, scale: 2 }),
-  startDate: timestamp("startDate"),
-  endDate: timestamp("endDate"),
-  status: mysqlEnum("status", ["planned", "active", "completed", "terminated"]).default("planned").notNull(),
-  notes: text("notes"),
+  role: varchar("role", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export type SiteEnterprise = typeof siteEnterprises.$inferSelect;
-export type InsertSiteEnterprise = typeof siteEnterprises.$inferInsert;
-
 // ============================================================
-// Team Members
+// Team Members (Collaborateurs)
 // ============================================================
 export const teamMembers = mysqlTable("team_members", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  role: varchar("role", { length: 100 }).notNull(),
+  role: varchar("role", { length: 100 }),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 50 }),
   hourlyRate: float("hourlyRate"),
-  active: boolean("active").default(true).notNull(),
+  status: mysqlEnum("status", ["active", "inactive"]).default("active").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -452,20 +403,17 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = typeof teamMembers.$inferInsert;
 
 // ============================================================
-// Tasks
+// Tasks (Tâches internes)
 // ============================================================
 export const tasks = mysqlTable("tasks", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
-  assigneeId: int("assigneeId").references(() => teamMembers.id, { onDelete: "set null" }),
-  phase: mysqlEnum("phase", PHASES),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
   status: mysqlEnum("status", ["todo", "in_progress", "review", "done"]).default("todo").notNull(),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
   dueDate: timestamp("dueDate"),
-  estimatedHours: float("estimatedHours"),
-  actualHours: float("actualHours"),
+  assigneeId: int("assigneeId").references(() => teamMembers.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -482,7 +430,7 @@ export const timeEntries = mysqlTable("time_entries", {
   projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
   taskId: int("taskId").references(() => tasks.id, { onDelete: "set null" }),
   date: timestamp("date").notNull(),
-  hours: float("hours").notNull(),
+  duration: float("duration").notNull(), // en heures
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -491,24 +439,21 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = typeof timeEntries.$inferInsert;
 
 // ============================================================
-// Invoices (Factures honoraires)
+// Invoices (Facturation)
 // ============================================================
 export const invoices = mysqlTable("invoices", {
   id: int("id").autoincrement().primaryKey(),
+  number: varchar("number", { length: 50 }).notNull().unique(),
   projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
   clientId: int("clientId").notNull().references(() => clients.id),
-  number: varchar("number", { length: 50 }).notNull(),
-  amount: float("amount").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  tax: decimal("tax", { precision: 15, scale: 2 }).default("0"),
+  total: decimal("total", { precision: 15, scale: 2 }).notNull(),
   status: mysqlEnum("status", ["draft", "sent", "paid", "overdue", "cancelled"]).default("draft").notNull(),
-  description: text("description"),
-  dueDate: timestamp("dueDate"),
+  issueDate: timestamp("issueDate").notNull(),
+  dueDate: timestamp("dueDate").notNull(),
   paidDate: timestamp("paidDate"),
-  items: json("items").$type<Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-  }>>().default([]),
+  notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -517,15 +462,17 @@ export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoice = typeof invoices.$inferInsert;
 
 // ============================================================
-// Expenses (Dépenses)
+// Expenses (Dépenses agence/projet)
 // ============================================================
 export const expenses = mysqlTable("expenses", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").references(() => projects.id, { onDelete: "set null" }),
   category: varchar("category", { length: 100 }).notNull(),
-  description: text("description").notNull(),
-  amount: float("amount").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
   date: timestamp("date").notNull(),
+  description: text("description"),
+  vendor: varchar("vendor", { length: 255 }),
+  status: mysqlEnum("status", ["pending", "approved", "reimbursed"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -533,45 +480,39 @@ export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = typeof expenses.$inferInsert;
 
 // ============================================================
-// Alerts & Notifications intelligentes
+// Gantt Tasks (Planning)
 // ============================================================
-export const alerts = mysqlTable("alerts", {
+export const ganttTasks = mysqlTable("gantt_tasks", {
   id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").references(() => projects.id, { onDelete: "cascade" }),
-  type: mysqlEnum("type", [
-    "budget_overrun",
-    "schedule_delay",
-    "permit_expiry",
-    "deliverable_pending",
-    "team_alert",
-    "phase_transition",
-  ]).notNull(),
-  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium").notNull(),
+  projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  siteId: int("siteId").references(() => constructionSites.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  status: mysqlEnum("status", ["active", "acknowledged", "resolved"]).default("active").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  acknowledgedAt: timestamp("acknowledgedAt"),
-  resolvedAt: timestamp("resolvedAt"),
-});
-
-export type Alert = typeof alerts.$inferSelect;
-export type InsertAlert = typeof alerts.$inferInsert;
-
-// ============================================================
-// AI Generated Content (documents générés par IA)
-// ============================================================
-export const aiGeneratedContent = mysqlTable("ai_generated_content", {
-  id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").references(() => projects.id, { onDelete: "cascade" }),
-  type: mysqlEnum("type", ["report", "cctp", "dpgf", "meeting_notes", "cost_estimate", "recommendation"]).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  content: text("content").notNull(),
-  prompt: text("prompt"),
-  status: mysqlEnum("status", ["draft", "approved", "published"]).default("draft").notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  progress: int("progress").default(0),
+  dependencies: json("dependencies").$type<number[]>(),
+  color: varchar("color", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type AIGeneratedContent = typeof aiGeneratedContent.$inferSelect;
-export type InsertAIGeneratedContent = typeof aiGeneratedContent.$inferInsert;
+export type GanttTask = typeof ganttTasks.$inferSelect;
+export type InsertGanttTask = typeof ganttTasks.$inferInsert;
+
+// ============================================================
+// Alerts (Notifications intelligentes)
+// ============================================================
+export const alerts = mysqlTable("alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["deadline", "budget", "incident", "task", "crm", "other"]).notNull(),
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).default("info").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("isRead").default(false),
+  isResolved: boolean("isResolved").default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Alert = typeof alerts.$inferSelect;
+export type InsertAlert = typeof alerts.$inferInsert;
