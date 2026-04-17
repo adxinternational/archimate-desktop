@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -16,14 +16,13 @@ import {
   incidents, InsertIncident,
   ganttTasks, InsertGanttTask,
   enterprises, InsertEnterprise,
-  siteEnterprises, InsertSiteEnterprise,
+  siteEnterprises,
   teamMembers, InsertTeamMember,
   tasks, InsertTask,
   timeEntries, InsertTimeEntry,
   invoices, InsertInvoice,
   expenses, InsertExpense,
   alerts, InsertAlert,
-  aiGeneratedContent, InsertAIGeneratedContent,
 } from "../drizzle/schema";
 
 // ── DB Connection ─────────────────────────────────────────────
@@ -248,27 +247,6 @@ export async function deleteDocument(id: number) {
   await db.delete(documents).where(eq(documents.id, id));
 }
 
-// ── Comments (Disabled - Table not in schema) ──────────────────
-/*
-export async function getCommentsByProject(projectId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(comments).where(eq(comments.projectId, projectId)).orderBy(desc(comments.createdAt));
-}
-
-export async function createComment(data: InsertComment) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(comments).values(data);
-}
-
-export async function deleteComment(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.delete(comments).where(eq(comments.id, id));
-}
-*/
-
 // ── Admin Procedures ──────────────────────────────────────────
 
 export async function getProceduresByProject(projectId: number) {
@@ -295,48 +273,24 @@ export async function deleteProcedure(id: number) {
   await db.delete(adminProcedures).where(eq(adminProcedures.id, id));
 }
 
-// ── Cost Estimates (Économie) ─────────────────────────────────
+// ── Economy / Cost Estimates ──────────────────────────────────
 
 export async function getCostEstimatesByProject(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(costEstimates).where(eq(costEstimates.projectId, projectId)).orderBy(costEstimates.phase);
+  return db.select().from(costEstimates).where(eq(costEstimates.projectId, projectId));
 }
 
 export async function createCostEstimate(data: InsertCostEstimate) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(costEstimates).values(data);
-  const result = await db.select().from(costEstimates).orderBy(desc(costEstimates.createdAt)).limit(1);
-  return result[0];
 }
 
 export async function updateCostEstimate(id: number, data: Partial<InsertCostEstimate>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(costEstimates).set({ ...data, updatedAt: new Date() }).where(eq(costEstimates.id, id));
-}
-
-// ── Building Permits ──────────────────────────────────────────
-
-export async function getBuildingPermitsByProject(projectId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(adminProcedures)
-    .where(and(eq(adminProcedures.projectId, projectId)))
-    .orderBy(desc(adminProcedures.createdAt));
-}
-
-export async function createBuildingPermit(data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(adminProcedures).values(data);
-}
-
-export async function updateBuildingPermit(id: number, data: any) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(adminProcedures).set({ ...data, updatedAt: new Date() }).where(eq(adminProcedures.id, id));
 }
 
 // ── Construction Sites ────────────────────────────────────────
@@ -360,7 +314,7 @@ export async function getSitesByProject(projectId: number) {
   return db.select().from(constructionSites).where(eq(constructionSites.projectId, projectId));
 }
 
-export async function createSite(data: InsertConstructionSite) {
+export async function createSite(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(constructionSites).values(data);
@@ -368,7 +322,7 @@ export async function createSite(data: InsertConstructionSite) {
   return result[0];
 }
 
-export async function updateSite(id: number, data: Partial<InsertConstructionSite>) {
+export async function updateSite(id: number, data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(constructionSites).set({ ...data, updatedAt: new Date() }).where(eq(constructionSites.id, id));
@@ -379,6 +333,8 @@ export async function deleteSite(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(constructionSites).where(eq(constructionSites.id, id));
 }
+
+// ── Site Journal ──────────────────────────────────────────────
 
 export async function getJournalBySite(siteId: number) {
   const db = await getDb();
@@ -398,6 +354,8 @@ export async function deleteJournalEntry(id: number) {
   await db.delete(siteJournalEntries).where(eq(siteJournalEntries.id, id));
 }
 
+// ── Meeting Reports ───────────────────────────────────────────
+
 export async function getMeetingsBySite(siteId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -416,10 +374,12 @@ export async function deleteMeeting(id: number) {
   await db.delete(meetingReports).where(eq(meetingReports.id, id));
 }
 
+// ── Incidents ─────────────────────────────────────────────────
+
 export async function getIncidentsBySite(siteId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(incidents).where(eq(incidents.siteId, siteId)).orderBy(desc(incidents.date));
+  return db.select().from(incidents).where(eq(incidents.siteId, siteId)).orderBy(desc(incidents.createdAt));
 }
 
 export async function createIncident(data: InsertIncident) {
@@ -434,29 +394,7 @@ export async function updateIncident(id: number, data: Partial<InsertIncident>) 
   await db.update(incidents).set({ ...data, updatedAt: new Date() }).where(eq(incidents.id, id));
 }
 
-// ── Gantt Tasks ───────────────────────────────────────────────
-
-export async function getGanttTasksByProject(projectId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(ganttTasks).where(eq(ganttTasks.projectId, projectId)).orderBy(ganttTasks.startDate);
-}
-
-export async function createGanttTask(data: InsertGanttTask) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(ganttTasks).values(data);
-  const result = await db.select().from(ganttTasks).orderBy(desc(ganttTasks.createdAt)).limit(1);
-  return result[0];
-}
-
-export async function updateGanttTask(id: number, data: Partial<InsertGanttTask>) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.update(ganttTasks).set({ ...data, updatedAt: new Date() }).where(eq(ganttTasks.id, id));
-}
-
-// ── Enterprises / Sous-traitants ──────────────────────────────
+// ── Enterprises ───────────────────────────────────────────────
 
 export async function getAllEnterprises() {
   const db = await getDb();
@@ -468,8 +406,6 @@ export async function createEnterprise(data: InsertEnterprise) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(enterprises).values(data);
-  const result = await db.select().from(enterprises).orderBy(desc(enterprises.createdAt)).limit(1);
-  return result[0];
 }
 
 export async function updateEnterprise(id: number, data: Partial<InsertEnterprise>) {
@@ -490,7 +426,7 @@ export async function getSiteEnterprises(siteId: number) {
   return db.select().from(siteEnterprises).where(eq(siteEnterprises.siteId, siteId));
 }
 
-export async function addSiteEnterprise(data: InsertSiteEnterprise) {
+export async function addSiteEnterprise(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(siteEnterprises).values(data);
@@ -501,7 +437,7 @@ export async function addSiteEnterprise(data: InsertSiteEnterprise) {
 export async function getAllTeamMembers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(teamMembers).where(eq(teamMembers.active, true)).orderBy(teamMembers.name);
+  return db.select().from(teamMembers).orderBy(teamMembers.name);
 }
 
 export async function createTeamMember(data: InsertTeamMember) {
@@ -521,7 +457,7 @@ export async function updateTeamMember(id: number, data: Partial<InsertTeamMembe
 export async function deleteTeamMember(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(teamMembers).set({ active: false, updatedAt: new Date() }).where(eq(teamMembers.id, id));
+  await db.delete(teamMembers).where(eq(teamMembers.id, id));
 }
 
 // ── Tasks ─────────────────────────────────────────────────────
@@ -643,7 +579,7 @@ export async function deleteExpense(id: number) {
 export async function getActiveAlerts() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(alerts).where(eq(alerts.status, "active")).orderBy(desc(alerts.createdAt));
+  return db.select().from(alerts).where(eq(alerts.isRead, false)).orderBy(desc(alerts.createdAt));
 }
 
 export async function createAlert(data: InsertAlert) {
@@ -655,13 +591,33 @@ export async function createAlert(data: InsertAlert) {
 export async function acknowledgeAlert(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(alerts).set({ status: "acknowledged", acknowledgedAt: new Date() }).where(eq(alerts.id, id));
+  await db.update(alerts).set({ isRead: true }).where(eq(alerts.id, id));
 }
 
 export async function resolveAlert(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(alerts).set({ status: "resolved", resolvedAt: new Date() }).where(eq(alerts.id, id));
+  await db.update(alerts).set({ isResolved: true }).where(eq(alerts.id, id));
+}
+
+// ── Gantt Tasks ───────────────────────────────────────────────
+
+export async function getGanttTasksByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(ganttTasks).where(eq(ganttTasks.projectId, projectId));
+}
+
+export async function createGanttTask(data: InsertGanttTask) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(ganttTasks).values(data);
+}
+
+export async function updateGanttTask(id: number, data: Partial<InsertGanttTask>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(ganttTasks).set({ ...data, updatedAt: new Date() }).where(eq(ganttTasks.id, id));
 }
 
 // ── Dashboard KPIs ────────────────────────────────────────────
@@ -687,8 +643,8 @@ export async function getDashboardKPIs() {
   const activeProjects = allProjects.filter(p => p.status === "active").length;
   const totalBudget = allProjects.filter(p => p.status === "active").reduce((s, p) => s + (p.budgetEstimated ?? 0), 0);
   const overdueTasks = allTasks.filter(t => t.status !== "done" && t.dueDate && new Date(t.dueDate) < now).length;
-  const hoursThisMonth = monthlyTime.reduce((s, e) => s + e.hours, 0);
-  const revenueThisMonth = allInvoices.filter(i => i.status === "paid" && i.createdAt >= startOfMonth).reduce((s, i) => s + i.amount, 0);
+  const hoursThisMonth = monthlyTime.reduce((s, e) => s + e.duration, 0);
+  const revenueThisMonth = allInvoices.filter(i => i.status === "paid" && i.createdAt >= startOfMonth).reduce((s, i) => s + Number(i.amount), 0);
   const pendingInvoices = allInvoices.filter(i => i.status === "sent" || i.status === "overdue").length;
 
   return { activeProjects, totalBudget, overdueTasks, hoursThisMonth, revenueThisMonth, pendingInvoices };
