@@ -520,7 +520,7 @@ export async function updateTeamMember(id: number, data: Partial<InsertTeamMembe
 export async function deleteTeamMember(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(teamMembers).set({ (teamMembers as any).active === false &&  updatedAt: new Date() }).where(eq(teamMembers.id, id));
+  await db.update(teamMembers).set({ status: "inactive", updatedAt: new Date() }).where(eq(teamMembers.id, id));
 }
 
 // ── Tasks ─────────────────────────────────────────────────────
