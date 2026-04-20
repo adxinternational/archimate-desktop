@@ -2,8 +2,9 @@
   "buildCommand": "pnpm install --no-frozen-lockfile && pnpm build",
   "outputDirectory": "dist/public",
   "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+"rewrites": [
+  { "source": "/api/(.*)", "destination": "/api/[...all].ts" },
+  { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
