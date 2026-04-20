@@ -51,8 +51,13 @@ function generateSalt(): string {
 }
 
 function cookieOpts(req: Request) {
-  const secure = (req as any).headers?.["x-forwarded-proto"] === "https" || process.env.NODE_ENV === "production";
-  return { httpOnly: true, secure, sameSite: "lax" as const, path: "/", maxAge: ONE_YEAR_S };
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    maxAge: ONE_YEAR_S,
+  };
 }
 
 export function registerAuthRoutes(app: Express) {
