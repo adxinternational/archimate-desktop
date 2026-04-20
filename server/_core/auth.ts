@@ -102,3 +102,5 @@ export function registerAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 }
+
+// Debug: test route sans DB
