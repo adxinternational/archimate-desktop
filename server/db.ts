@@ -16,14 +16,13 @@ import {
   incidents, InsertIncident,
   ganttTasks, InsertGanttTask,
   enterprises, InsertEnterprise,
-  siteEnterprises, InsertSiteEnterprise,
+  siteEnterprises,
   teamMembers, InsertTeamMember,
   tasks, InsertTask,
   timeEntries, InsertTimeEntry,
   invoices, InsertInvoice,
   expenses, InsertExpense,
   alerts, InsertAlert,
-  aiGeneratedContent, InsertAIGeneratedContent,
 } from "../drizzle/schema";
 
 // ── DB Connection ─────────────────────────────────────────────
@@ -419,7 +418,7 @@ export async function deleteMeeting(id: number) {
 export async function getIncidentsBySite(siteId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(incidents).where(eq(incidents.siteId, siteId)).orderBy(desc(incidents.date));
+  return db.select().from(incidents).where(eq(incidents.siteId, siteId)).orderBy(desc(incidents.createdAt));
 }
 
 export async function createIncident(data: InsertIncident) {
@@ -490,7 +489,7 @@ export async function getSiteEnterprises(siteId: number) {
   return db.select().from(siteEnterprises).where(eq(siteEnterprises.siteId, siteId));
 }
 
-export async function addSiteEnterprise(data: InsertSiteEnterprise) {
+export async function addSiteEnterprise(data: any) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(siteEnterprises).values(data);
@@ -501,7 +500,7 @@ export async function addSiteEnterprise(data: InsertSiteEnterprise) {
 export async function getAllTeamMembers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(teamMembers).where(eq(teamMembers.active, true)).orderBy(teamMembers.name);
+  return db.select().from(teamMembers).where(eq((teamMembers as any).active, true)).orderBy(teamMembers.name);
 }
 
 export async function createTeamMember(data: InsertTeamMember) {
@@ -521,7 +520,7 @@ export async function updateTeamMember(id: number, data: Partial<InsertTeamMembe
 export async function deleteTeamMember(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(teamMembers).set({ active: false, updatedAt: new Date() }).where(eq(teamMembers.id, id));
+  await db.update(teamMembers).set({ status: "inactive", updatedAt: new Date() }).where(eq(teamMembers.id, id));
 }
 
 // ── Tasks ─────────────────────────────────────────────────────
@@ -687,7 +686,7 @@ export async function getDashboardKPIs() {
   const activeProjects = allProjects.filter(p => p.status === "active").length;
   const totalBudget = allProjects.filter(p => p.status === "active").reduce((s, p) => s + (p.budgetEstimated ?? 0), 0);
   const overdueTasks = allTasks.filter(t => t.status !== "done" && t.dueDate && new Date(t.dueDate) < now).length;
-  const hoursThisMonth = monthlyTime.reduce((s, e) => s + e.hours, 0);
+  const hoursThisMonth = monthlyTime.reduce((s, e) => s + (e as any).duration, 0);
   const revenueThisMonth = allInvoices.filter(i => i.status === "paid" && i.createdAt >= startOfMonth).reduce((s, i) => s + i.amount, 0);
   const pendingInvoices = allInvoices.filter(i => i.status === "sent" || i.status === "overdue").length;
 

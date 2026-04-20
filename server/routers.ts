@@ -48,7 +48,7 @@ export const appRouter = router({
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user ?? null),
     logout: publicProcedure.mutation(({ ctx }) => {
-      ctx.res.clearCookie("aos_session", { path: "/" });
+      (ctx.res as any).clearCookie("aos_session", { path: "/" });
       return { success: true } as const;
     }),
   }),
