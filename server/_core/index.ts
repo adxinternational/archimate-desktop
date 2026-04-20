@@ -16,6 +16,10 @@ app.use(cookieParser());
 registerAuthRoutes(app);
 registerChatRoutes(app);
 
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.use(
   "/api/trpc",
   createExpressMiddleware({ router: appRouter, createContext })
