@@ -10,7 +10,7 @@ import { Plus, Download, Eye } from "lucide-react";
 
 export function QuotesManagement() {
   const [, params] = useRoute("/projects/:id");
-  const projectId = params?.id ? parseInt(params.id) : null;
+  const projectId = (params as any)?.id ? parseInt((params as any).id) : null;
 
   const { data: project, isLoading: projectLoading } = trpc.projects.byId.useQuery(
     { id: projectId! },

@@ -31,7 +31,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 export default function ClientDetail() {
   const [, params] = useRoute("/clients/:id");
   const [, navigate] = useLocation();
-  const clientId = parseInt(params?.id ?? "0");
+  const clientId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>(null);
@@ -213,7 +213,7 @@ export default function ClientDetail() {
                 <FolderOpen className="w-4 h-4 text-primary" />
                 Projets ({clientProjects?.length ?? 0})
               </CardTitle>
-              <Link href={`/projets/nouveau`}>
+              <Link href={`/projects/create`}>
                 <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
                   + Nouveau projet
                 </Button>
@@ -229,7 +229,7 @@ export default function ClientDetail() {
             ) : (
               <div className="space-y-3">
                 {clientProjects.map(project => (
-                  <Link key={project.id} href={`/projets/${project.id}`}>
+                  <Link key={project.id} href={`/projects/${project.id}`}>
                     <div className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors cursor-pointer group">
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <FolderOpen className="w-4 h-4 text-primary" />

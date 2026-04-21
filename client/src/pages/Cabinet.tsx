@@ -20,7 +20,6 @@ import {
   formatCurrency, formatDate, getPriorityColor, getInvoiceStatusColor,
   PRIORITY_LABELS, TASK_STATUS_LABELS, INVOICE_STATUS_LABELS
 } from "@/lib/constants";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 // ============================================================
 // Team Tab
@@ -96,7 +95,7 @@ function TeamTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {team.map(member => (
+          {team.map((member: any) => (
             <Card key={member.id} className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
@@ -223,21 +222,17 @@ function TasksTab() {
                   <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Heures estimées</Label>
-                <Input type="number" value={form.estimatedHours} onChange={e => setForm(f => ({ ...f, estimatedHours: e.target.value }))} placeholder="0" />
-              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
                 <Button
                   onClick={() => createTask.mutate({
                     title: form.title,
+                    description: form.description || undefined,
                     projectId: form.projectId ? parseInt(form.projectId) : undefined,
                     assigneeId: form.assigneeId ? parseInt(form.assigneeId) : undefined,
                     priority: form.priority,
                     status: form.status,
                     dueDate: form.dueDate ? new Date(form.dueDate) : undefined,
-                    estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : undefined,
                   })}
                   disabled={!form.title || createTask.isPending}
                 >Créer</Button>
@@ -247,52 +242,61 @@ function TasksTab() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(["todo", "in_progress", "review", "done"] as const).map(status => (
-          <div key={status}>
-            <div className="flex items-center gap-2 mb-3">
-              <StatusIcon status={status} />
-              <span className="text-sm font-medium">{TASK_STATUS_LABELS[status]}</span>
-              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                {tasksByStatus[status].length}
-              </span>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {(Object.keys(tasksByStatus) as Array<keyof typeof tasksByStatus>).map(status => (
+          <div key={status} className="space-y-3">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <StatusIcon status={status} />
+                {TASK_STATUS_LABELS[status]}
+                <span className="ml-1 text-[10px] bg-muted px-1.5 py-0.5 rounded-full">{tasksByStatus[status].length}</span>
+              </h3>
             </div>
             <div className="space-y-2">
-              {tasksByStatus[status].map(task => {
-                const project = projects?.find(p => p.id === task.projectId);
-                const assignee = team?.find(m => m.id === task.assigneeId);
-                const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "done";
-                return (
-                  <div key={task.id} className="p-3 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow">
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="text-xs font-medium leading-snug flex-1">{task.title}</p>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive flex-shrink-0"
+              {tasksByStatus[status].map((task: any) => (
+                <Card key={task.id} className="border-0 shadow-sm hover:ring-1 hover:ring-primary/20 transition-all">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium leading-tight">{task.title}</p>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={() => deleteTask.mutate({ id: task.id })}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
-                    <div className="mt-2 space-y-1">
-                      <Badge className={`text-xs ${getPriorityColor(task.priority)}`}>{PRIORITY_LABELS[task.priority]}</Badge>
-                      {project && <p className="text-xs text-muted-foreground truncate">{project.name}</p>}
-                      {assignee && <p className="text-xs text-muted-foreground">{assignee.name}</p>}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Badge className={`text-[10px] px-1.5 py-0 h-4 ${getPriorityColor(task.priority)}`}>
+                        {PRIORITY_LABELS[task.priority]}
+                      </Badge>
                       {task.dueDate && (
-                        <p className={`text-xs ${isOverdue ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
-                          {isOverdue ? "⚠ " : ""}{formatDate(task.dueDate)}
-                        </p>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" /> {formatDate(task.dueDate)}
+                        </span>
                       )}
                     </div>
-                    <Select value={task.status} onValueChange={v => updateTask.mutate({ id: task.id, status: v as any })}>
-                      <SelectTrigger className="h-6 text-xs mt-2"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todo">À faire</SelectItem>
-                        <SelectItem value="in_progress">En cours</SelectItem>
-                        <SelectItem value="review">En révision</SelectItem>
-                        <SelectItem value="done">Terminé</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                );
-              })}
+                    <div className="mt-2 pt-2 border-t border-border/50 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {task.assigneeId && (
+                          <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                            {team?.find(m => m.id === task.assigneeId)?.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">
+                          {projects?.find(p => p.id === task.projectId)?.name || "Sans projet"}
+                        </span>
+                      </div>
+                      <Select value={task.status} onValueChange={v => updateTask.mutate({ id: task.id, status: v as any })}>
+                        <SelectTrigger className="w-24 h-6 text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todo">À faire</SelectItem>
+                          <SelectItem value="in_progress">En cours</SelectItem>
+                          <SelectItem value="review">Révision</SelectItem>
+                          <SelectItem value="done">Terminé</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         ))}
@@ -304,19 +308,19 @@ function TasksTab() {
 // ============================================================
 // Finances Tab
 // ============================================================
+const EXPENSE_CATEGORIES = ["Logiciels", "Matériel", "Déplacements", "Assurances", "Loyer", "Marketing", "Sous-traitance", "Autre"];
+
 function FinancesTab() {
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({
-    clientId: "", projectId: "", number: "", amount: "", description: "",
-    status: "draft" as const, dueDate: "",
+    number: "", clientId: "", projectId: "", amount: "", status: "draft" as const, dueDate: "", description: "",
   });
   const [expenseForm, setExpenseForm] = useState({
-    projectId: "", category: "", description: "", amount: "",
-    date: new Date().toISOString().split("T")[0],
+    category: "", projectId: "", description: "", amount: "", date: new Date().toISOString().split("T")[0],
   });
-  const utils = trpc.useUtils();
 
+  const utils = trpc.useUtils();
   const { data: invoices } = trpc.invoices.list.useQuery();
   const { data: expenses } = trpc.expenses.list.useQuery();
   const { data: clients } = trpc.clients.list.useQuery();
@@ -331,58 +335,16 @@ function FinancesTab() {
   const deleteInvoice = trpc.invoices.delete.useMutation({
     onSuccess: () => { utils.invoices.list.invalidate(); toast.success("Facture supprimée"); },
   });
+
   const createExpense = trpc.expenses.create.useMutation({
     onSuccess: () => { utils.expenses.list.invalidate(); setExpenseOpen(false); toast.success("Dépense ajoutée"); },
   });
   const deleteExpense = trpc.expenses.delete.useMutation({
-    onSuccess: () => utils.expenses.list.invalidate(),
+    onSuccess: () => { utils.expenses.list.invalidate(); toast.success("Dépense supprimée"); },
   });
 
-  const totalRevenue = invoices?.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount ?? 0), 0) ?? 0;
-  const totalExpenses = expenses?.reduce((s, e) => s + (e.amount ?? 0), 0) ?? 0;
-  const pendingAmount = invoices?.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + (i.amount ?? 0), 0) ?? 0;
-
-  const EXPENSE_CATEGORIES = ["Matériaux", "Sous-traitance", "Déplacements", "Logiciels", "Fournitures", "Formation", "Autre"];
-
   return (
-    <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Revenus encaissés</p>
-                <p className="text-xl font-bold text-green-600">{formatCurrency(totalRevenue)}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-100 bg-green-100 rounded-lg p-1.5" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Dépenses totales</p>
-                <p className="text-xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-red-100 bg-red-100 rounded-lg p-1.5" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">En attente de paiement</p>
-                <p className="text-xl font-bold text-orange-600">{formatCurrency(pendingAmount)}</p>
-              </div>
-              <Clock className="w-8 h-8 text-orange-100 bg-orange-100 rounded-lg p-1.5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Invoices */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-3">
@@ -471,7 +433,7 @@ function FinancesTab() {
             <p className="text-sm text-muted-foreground text-center py-6">Aucune facture</p>
           ) : (
             <div className="space-y-2">
-              {invoices.map(invoice => {
+              {invoices.map((invoice: any) => {
                 const client = clients?.find(c => c.id === invoice.clientId);
                 const project = projects?.find(p => p.id === invoice.projectId);
                 return (
@@ -581,7 +543,7 @@ function FinancesTab() {
             <p className="text-sm text-muted-foreground text-center py-6">Aucune dépense enregistrée</p>
           ) : (
             <div className="space-y-2">
-              {expenses.slice(0, 10).map(expense => {
+              {expenses.slice(0, 10).map((expense: any) => {
                 const project = projects?.find(p => p.id === expense.projectId);
                 return (
                   <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">

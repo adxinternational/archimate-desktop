@@ -147,7 +147,7 @@ function DocumentsTab({ projectId }: { projectId: number }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {documents?.map(doc => (
+          {documents?.map((doc: any) => (
             <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
               <span className="text-xl">{categoryIcons[doc.category] ?? "📄"}</span>
               <div className="flex-1 min-w-0">
@@ -170,150 +170,95 @@ function DocumentsTab({ projectId }: { projectId: number }) {
   );
 }
 
-function CommentsTab({ projectId, authorName }: { projectId: number; authorName: string }) {
-  const [content, setContent] = useState("");
-  const utils = trpc.useUtils();
-
-  const { data: comments } = trpc.projects.comments.useQuery({ projectId });
-  const addComment = trpc.projects.addComment.useMutation({
-    onSuccess: () => { utils.projects.comments.invalidate(); setContent(""); },
-  });
-  const deleteComment = trpc.projects.deleteComment.useMutation({
-    onSuccess: () => utils.projects.comments.invalidate(),
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
-        <Textarea
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          placeholder="Ajouter un commentaire..."
-          rows={2}
-          className="flex-1 resize-none"
-        />
-        <Button
-          onClick={() => addComment.mutate({ projectId, authorName, content })}
-          disabled={!content.trim() || addComment.isPending}
-          className="self-end"
-        >
-          Envoyer
-        </Button>
-      </div>
-      <div className="space-y-3">
-        {comments?.map(comment => (
-          <div key={comment.id} className="flex gap-3 p-3 rounded-lg bg-muted/50">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
-              {comment.authorName.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{comment.authorName}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteComment.mutate({ id: comment.id })}>
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-              <p className="text-sm text-foreground mt-1">{comment.content}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ProceduresTab({ projectId }: { projectId: number }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", type: "permis_construire", notes: "" });
+  const [form, setForm] = useState({ title: "", type: "PC" as const, referenceNumber: "" });
   const utils = trpc.useUtils();
 
   const { data: procedures } = trpc.projects.procedures.useQuery({ projectId });
-  const addProc = trpc.projects.addProcedure.useMutation({
-    onSuccess: () => { utils.projects.procedures.invalidate(); setOpen(false); toast.success("Procédure ajoutée"); },
+  const addProc = (trpc.projects as any).addProcedure.useMutation({
+    onSuccess: () => { utils.projects.procedures.invalidate(); setOpen(false); setForm({ title: "", type: "PC", referenceNumber: "" }); toast.success("Procédure ajoutée"); },
   });
   const updateProc = trpc.projects.updateProcedure.useMutation({
     onSuccess: () => utils.projects.procedures.invalidate(),
   });
-
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-700",
-    submitted: "bg-blue-100 text-blue-700",
-    approved: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
-  };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />Ajouter une procédure</Button>
+            <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />Nouvelle procédure</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nouvelle procédure administrative</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
                 <Label>Titre</Label>
-                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Permis de construire" />
+                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Permis de construire - Lot 1" />
               </div>
-              <div className="space-y-1.5">
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="permis_construire">Permis de construire</SelectItem>
-                    <SelectItem value="declaration_travaux">Déclaration de travaux</SelectItem>
-                    <SelectItem value="autorisation">Autorisation</SelectItem>
-                    <SelectItem value="dossier_reglementaire">Dossier réglementaire</SelectItem>
-                    <SelectItem value="autre">Autre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Type</Label>
+                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PC">Permis de Construire</SelectItem>
+                      <SelectItem value="DP">Déclaration Préalable</SelectItem>
+                      <SelectItem value="AT">Autorisation Travaux</SelectItem>
+                      <SelectItem value="CU">Certificat Urbanisme</SelectItem>
+                      <SelectItem value="ERP">Dossier ERP</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Référence</Label>
+                  <Input value={form.referenceNumber} onChange={e => setForm(f => ({ ...f, referenceNumber: e.target.value }))} placeholder="N° de dossier" />
+                </div>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
                 <Button onClick={() => addProc.mutate({ projectId, ...form })} disabled={!form.title || addProc.isPending}>
-                  Ajouter
+                  Créer
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
       {procedures?.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
-          <CheckSquare className="w-10 h-10 mx-auto mb-2 opacity-20" />
-          <p className="text-sm">Aucune procédure administrative</p>
+          <FileText className="w-10 h-10 mx-auto mb-2 opacity-20" />
+          <p className="text-sm">Aucune procédure en cours</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {procedures?.map(proc => (
+          {procedures?.map((proc: any) => (
             <div key={proc.id} className="p-4 rounded-lg border border-border">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-sm">{proc.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{proc.type}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{proc.title}</p>
+                    <Badge variant="secondary" className="text-[10px]">{proc.type}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Réf: {proc.referenceNumber || "Non renseignée"}</p>
                 </div>
-                <Select value={proc.status} onValueChange={v => updateProc.mutate({ id: proc.id, status: v as any })}>
-                  <SelectTrigger className={`w-32 h-7 text-xs ${statusColors[proc.status]}`}>
+                <Select
+                  value={proc.status}
+                  onValueChange={v => updateProc.mutate({ id: proc.id, status: v as any })}
+                >
+                  <SelectTrigger className="w-32 h-7 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">En attente</SelectItem>
-                    <SelectItem value="submitted">Soumis</SelectItem>
-                    <SelectItem value="approved">Approuvé</SelectItem>
-                    <SelectItem value="rejected">Rejeté</SelectItem>
+                    {Object.entries(PROCEDURE_STATUS_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              {proc.notes && <p className="text-xs text-muted-foreground mt-2">{proc.notes}</p>}
             </div>
           ))}
         </div>
@@ -323,30 +268,24 @@ function ProceduresTab({ projectId }: { projectId: number }) {
 }
 
 export default function ProjectDetail() {
-  const [, params] = useRoute("/projets/:id");
+  const [, params] = useRoute("/projects/:id");
   const [, navigate] = useLocation();
-  const projectId = parseInt(params?.id ?? "0");
+  const projectId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
 
   const { data: project, isLoading } = trpc.projects.byId.useQuery({ id: projectId });
   const { data: phases } = trpc.projects.phases.useQuery({ projectId });
   const { data: clients } = trpc.clients.list.useQuery();
-  const { data: tasks } = trpc.tasks.byProject.useQuery({ projectId });
 
-  const deleteMutation = trpc.projects.delete.useMutation({
-    onSuccess: () => { utils.projects.list.invalidate(); navigate("/projets"); toast.success("Projet supprimé"); },
-  });
-
-  const updateMutation = trpc.projects.update.useMutation({
-    onSuccess: () => { utils.projects.byId.invalidate(); toast.success("Projet mis à jour"); },
+  const deleteProject = trpc.projects.delete.useMutation({
+    onSuccess: () => { utils.projects.list.invalidate(); navigate("/projects"); toast.success("Projet supprimé"); },
   });
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
@@ -355,208 +294,123 @@ export default function ProjectDetail() {
     return (
       <div className="p-6 text-center">
         <p className="text-muted-foreground">Projet introuvable</p>
-        <Link href="/projets"><Button variant="outline" className="mt-4">Retour aux projets</Button></Link>
+        <Button variant="link" asChild><Link href="/projects">Retour aux projets</Link></Button>
       </div>
     );
   }
 
   const client = clients?.find(c => c.id === project.clientId);
-  const phaseIndex = PHASE_ORDER.indexOf(project.currentPhase as any);
-  const phaseProgress = phaseIndex >= 0 ? Math.round(((phaseIndex + 1) / PHASE_ORDER.length) * 100) : 0;
 
   return (
-    <div className="p-6 space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <Link href="/projets">
-            <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild><Link href="/projects"><ArrowLeft className="w-5 h-5" /></Link></Button>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
-              <Badge className={getStatusColor(project.status)}>{STATUS_LABELS[project.status]}</Badge>
-              <Badge className={getPhaseColor(project.currentPhase)}>{PHASE_LABELS[project.currentPhase]}</Badge>
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
-              {client && <span className="flex items-center gap-1"><User className="w-3.5 h-3.5" />{client.name}</span>}
-              {project.city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{project.city}</span>}
-              {project.budgetEstimated && <span className="flex items-center gap-1"><Euro className="w-3.5 h-3.5" />{formatCurrency(project.budgetEstimated)}</span>}
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <MapPin className="w-3.5 h-3.5" /> {project.address || "Adresse non renseignée"}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Select value={project.status} onValueChange={v => updateMutation.mutate({ id: projectId, status: v as any })}>
-            <SelectTrigger className="w-36 h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">En cours</SelectItem>
-              <SelectItem value="on_hold">En attente</SelectItem>
-              <SelectItem value="completed">Terminé</SelectItem>
-              <SelectItem value="cancelled">Annulé</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => { if (confirm("Supprimer ce projet ?")) deleteMutation.mutate({ id: projectId }); }}
-          >
+        <div className="flex items-center gap-2">
+          <Badge className={getStatusColor(project.status)}>
+            {STATUS_LABELS[project.status]}
+          </Badge>
+          <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10"
+            onClick={() => { if (confirm("Supprimer ce projet ?")) deleteProject.mutate({ id: project.id }); }}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Progress */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Progression globale</span>
-            <span className="text-sm font-bold text-primary">{phaseProgress}%</span>
-          </div>
-          <Progress value={phaseProgress} className="h-2" />
-          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-            <span>Faisabilité</span>
-            <span>Livraison</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-lg">Informations Générales</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Client</Label>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  {client?.name || "Chargement..."}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Budget estimé</Label>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Euro className="w-3.5 h-3.5 text-muted-foreground" />
+                  {formatCurrency(project.budgetEstimated ?? 0)}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Surface</Label>
+                <p className="text-sm font-medium">{project.surface ? `${project.surface} m²` : "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Date de début</Label>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                  {formatDate(project.startDate)}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {project.description || "Aucune description fournie."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Tabs */}
-      <Tabs defaultValue="overview">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="overview">Aperçu</TabsTrigger>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-lg">Progression</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Avancement global</span>
+                <span className="font-medium">{project.progress}%</span>
+              </div>
+              <Progress value={project.progress} className="h-2" />
+            </div>
+            <div className="pt-2">
+              <Label className="text-xs text-muted-foreground">Phase actuelle</Label>
+              <div className="mt-1">
+                <Badge className={getPhaseColor(project.currentPhase)}>
+                  {PHASE_LABELS[project.currentPhase]}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="phases" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="phases">Phases</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="comments">Coordination</TabsTrigger>
-          <TabsTrigger value="procedures">Admin</TabsTrigger>
+          <TabsTrigger value="procedures">Procédures</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="overview" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Informations</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {project.type && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Type</span>
-                    <span className="font-medium">{project.type}</span>
-                  </div>
-                )}
-                {project.address && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Adresse</span>
-                    <span className="font-medium text-right">{project.address}</span>
-                  </div>
-                )}
-                {project.startDate && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Démarrage</span>
-                    <span className="font-medium">{formatDate(project.startDate)}</span>
-                  </div>
-                )}
-                {project.endDate && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Fin prévue</span>
-                    <span className="font-medium">{formatDate(project.endDate)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Budget estimé</span>
-                  <span className="font-semibold text-primary">{formatCurrency(project.budgetEstimated ?? 0)}</span>
-                </div>
-                {project.budgetActual ? (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Budget réel</span>
-                    <span className="font-semibold">{formatCurrency(project.budgetActual)}</span>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3"><CardTitle className="text-sm">Tâches du projet</CardTitle></CardHeader>
-              <CardContent>
-                {!tasks || tasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Aucune tâche</p>
-                ) : (
-                  <div className="space-y-2">
-                    {tasks.slice(0, 5).map(task => (
-                      <div key={task.id} className="flex items-center gap-2 text-sm">
-                        {task.status === "done" ? <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" /> :
-                         task.status === "in_progress" ? <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" /> :
-                         <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
-                        <span className={`truncate ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
-                          {task.title}
-                        </span>
-                      </div>
-                    ))}
-                    {tasks.length > 5 && (
-                      <p className="text-xs text-muted-foreground">+{tasks.length - 5} autres tâches</p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {project.description && (
-              <Card className="border-0 shadow-sm md:col-span-2">
-                <CardHeader className="pb-3"><CardTitle className="text-sm">Description</CardTitle></CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
-
         <TabsContent value="phases" className="mt-4">
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Phases du projet</CardTitle>
-                <Select value={project.currentPhase} onValueChange={v => updateMutation.mutate({ id: projectId, currentPhase: v as any })}>
-                  <SelectTrigger className="w-44 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PHASE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-sm">Suivi des phases</CardTitle></CardHeader>
             <CardContent>
-              <PhaseTimeline phases={phases ?? []} currentPhase={project.currentPhase} />
+              <PhaseTimeline phases={phases || []} currentPhase={project.currentPhase} />
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="documents" className="mt-4">
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3"><CardTitle className="text-sm">Documents du projet</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Documents du projet</CardTitle></CardHeader>
             <CardContent>
               <DocumentsTab projectId={projectId} />
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="comments" className="mt-4">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3"><CardTitle className="text-sm">Coordination & Commentaires</CardTitle></CardHeader>
-            <CardContent>
-              <CommentsTab projectId={projectId} authorName="Utilisateur" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="procedures" className="mt-4">
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-3"><CardTitle className="text-sm">Procédures administratives</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Procédures administratives</CardTitle></CardHeader>
             <CardContent>
               <ProceduresTab projectId={projectId} />
             </CardContent>

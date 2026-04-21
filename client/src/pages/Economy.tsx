@@ -235,7 +235,7 @@ export default function Economy() {
                   ) : (
                     estimates
                       .filter(e => tab === "all" || e.status === tab)
-                      .map(estimate => {
+                      .map((estimate: any) => {
                         const est = parseFloat(estimate.estimatedAmount ?? "0");
                         const act = parseFloat(estimate.actualAmount ?? "0");
                         const diff = act - est;
@@ -399,40 +399,36 @@ export default function Economy() {
             <div>
               <label className="text-sm font-medium">Catégorie</label>
               <Input
-                className="mt-1"
-                placeholder="Ex: Structure, MEP, Finitions…"
-                value={form.category ?? ""}
+                placeholder="Ex: Gros œuvre, Menuiseries..."
+                value={form.category || ""}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                className="mt-1"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Description</label>
               <Input
-                className="mt-1"
-                placeholder="Description du poste de coût"
-                value={form.description ?? ""}
+                placeholder="Détails de l'estimation"
+                value={form.description || ""}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                className="mt-1"
               />
             </div>
             <div>
               <label className="text-sm font-medium">Montant estimé (€)</label>
               <Input
-                className="mt-1"
                 type="number"
                 placeholder="0"
-                value={form.estimatedAmount ?? ""}
+                value={form.estimatedAmount || ""}
                 onChange={e => setForm(f => ({ ...f, estimatedAmount: e.target.value }))}
+                className="mt-1"
               />
             </div>
           </div>
-          <DialogFooter className="mt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Annuler</Button>
-            <Button
-              onClick={handleCreate}
-              disabled={createEstimate.isPending || !form.phase || !form.category || !form.description || !form.estimatedAmount}
-            >
-              {createEstimate.isPending ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
-              Ajouter
+            <Button onClick={handleCreate} disabled={createEstimate.isPending}>
+              {createEstimate.isPending ? "Ajout..." : "Ajouter"}
             </Button>
           </DialogFooter>
         </DialogContent>

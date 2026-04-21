@@ -53,14 +53,14 @@ export default function EnhancedDashboard() {
     const pendingTasks = tasks.filter(t => t.status === "todo" || t.status === "in_progress").length;
 
     const monthlyRevenue = invoices
-      .filter(i => i.status === "paid" && new Date(i.createdAt) >= startOfMonth)
-      .reduce((s, i) => s + i.amount, 0);
+      .filter(i => i.status === "paid" && new Date(i.createdAt).getTime() >= startOfMonth.getTime())
+      .reduce((s, i) => s + parseFloat(i.amount as any), 0);
 
-    const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.amount, 0);
+    const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + parseFloat(i.amount as any), 0);
     const pendingRevenue = invoices.filter(i => i.status === "sent" || i.status === "overdue")
-      .reduce((s, i) => s + i.amount, 0);
+      .reduce((s, i) => s + parseFloat(i.amount as any), 0);
 
-    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalExpenses = expenses.reduce((s, e) => s + parseFloat(e.amount as any), 0);
 
     const activeSites = sites.filter(s => s.status === "active").length;
 
@@ -82,10 +82,10 @@ export default function EnhancedDashboard() {
     return months.map(({ month, year, m }) => {
       const revenue = invoices
         .filter(i => i.status === "paid" && new Date(i.createdAt).getMonth() === m && new Date(i.createdAt).getFullYear() === year)
-        .reduce((s, i) => s + i.amount, 0);
+        .reduce((s, i) => s + parseFloat(i.amount as any), 0);
       const costs = expenses
         .filter(e => new Date(e.date).getMonth() === m && new Date(e.date).getFullYear() === year)
-        .reduce((s, e) => s + e.amount, 0);
+        .reduce((s, e) => s + parseFloat(e.amount as any), 0);
       return { month, revenue, costs, margin: revenue - costs };
     });
   }, [invoices, expenses]);
@@ -198,23 +198,6 @@ export default function EnhancedDashboard() {
           )
         }
         </div>
-        
-        {/* Graphique financier ancien */}
-        {chartData.some(d => d.revenue > 0 || d.costs > 0) ? (
-          <div style={{ display: "none" }}>
-            <FinancialChart
-              data={chartData}
-              title="Synthèse financière — 6 derniers mois"
-              type="area"
-              height={280}
-            />
-          </div>
-        ) : (
-          <Card className="p-8 text-center">
-            <TrendingUp size={32} className="mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-sm text-muted-foreground">Le graphique financier apparaîtra dès que vous aurez des factures et dépenses.</p>
-          </Card>
-        )}
 
         {/* Projets récents + Tâches urgentes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -278,64 +261,36 @@ export default function EnhancedDashboard() {
                   <p className="text-sm text-muted-foreground">Aucune tâche urgente</p>
                 </div>
               ) : (
-                urgentTasks.map(t => {
-                  const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
-                  return (
-                    <div key={t.id} className="flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                        t.priority === "urgent" ? "bg-red-500" : "bg-orange-400"
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{t.title}</p>
+                urgentTasks.map(t => (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => navigate("/cabinet")}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{t.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                          {t.priority.toUpperCase()}
+                        </Badge>
                         {t.dueDate && (
-                          <p className={`text-xs ${isOverdue ? "text-red-500" : "text-muted-foreground"}`}>
-                            {isOverdue ? "En retard — " : ""}
-                            {new Date(t.dueDate).toLocaleDateString("fr-FR")}
-                          </p>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock size={10} /> {new Date(t.dueDate).toLocaleDateString()}
+                          </span>
                         )}
                       </div>
-                      <Badge className={`text-xs shrink-0 ${
-                        t.priority === "urgent" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
-                      }`}>
-                        {t.priority === "urgent" ? "Urgent" : "Haute"}
-                      </Badge>
                     </div>
-                  );
-                })
+                    <div className="shrink-0 ml-2">
+                      <div className="w-5 h-5 rounded border border-muted-foreground/30 flex items-center justify-center">
+                        {t.status === "done" && <CheckSquare size={12} className="text-primary" />}
+                      </div>
+                    </div>
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Stats secondaires */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="p-4 text-center">
-            <Users size={20} className="mx-auto text-blue-500 mb-2" />
-            <p className="text-2xl font-bold">{kpis.totalClients}</p>
-            <p className="text-xs text-muted-foreground">Clients</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <Clock size={20} className="mx-auto text-green-500 mb-2" />
-            <p className="text-2xl font-bold">{kpis.teamSize}</p>
-            <p className="text-xs text-muted-foreground">Collaborateurs</p>
-          </Card>
-          <Card className="p-4 text-center">
-            <DollarSign size={20} className="mx-auto text-orange-500 mb-2" />
-            <p className="text-2xl font-bold">{fmt(kpis.totalExpenses)}</p>
-            <p className="text-xs text-muted-foreground">Dépenses totales</p>
-          </Card>
-        </div>
-
-        {/* Actions rapides */}
-        <div className="flex flex-wrap gap-3 justify-end">
-          <Button variant="outline" onClick={() => navigate("/clients/create")}>
-            Nouveau client
-          </Button>
-          <Button onClick={() => navigate("/projects/create")}>
-            Nouveau projet
-          </Button>
-        </div>
-
       </div>
     </EnhancedLayout>
   );

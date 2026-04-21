@@ -23,7 +23,7 @@ import { formatDate, getSiteStatusColor, SITE_STATUS_LABELS, getIncidentSeverity
 export default function SiteDetail() {
   const [, params] = useRoute("/chantier/:id");
   const [, navigate] = useLocation();
-  const siteId = parseInt(params?.id ?? "0");
+  const siteId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
 
   const { data: site, isLoading } = trpc.sites.byId.useQuery({ id: siteId });
@@ -36,14 +36,14 @@ export default function SiteDetail() {
   const [journalOpen, setJournalOpen] = useState(false);
   const [journalForm, setJournalForm] = useState({
     date: new Date().toISOString().split("T")[0],
-    weather: "", workDescription: "", workers: "", notes: "",
+    weather: "", content: "", author: "",
   });
 
   // Meeting form
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [meetingForm, setMeetingForm] = useState({
     date: new Date().toISOString().split("T")[0],
-    title: "", attendees: "", summary: "", decisions: "", nextActions: "",
+    title: "", attendees: "", content: "",
   });
 
   // Incident form
@@ -98,95 +98,77 @@ export default function SiteDetail() {
     return (
       <div className="p-6 text-center">
         <p className="text-muted-foreground">Chantier introuvable</p>
-        <Link href="/chantier"><Button variant="outline" className="mt-4">Retour</Button></Link>
+        <Button variant="link" asChild><Link href="/chantier">Retour aux chantiers</Link></Button>
       </div>
     );
   }
 
-  const project = projects?.find(p => p.id === site.projectId);
-  const openIncidents = incidents?.filter(i => i.status === "open").length ?? 0;
-
   return (
-    <div className="p-6 space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <Link href="/chantier">
-            <Button variant="ghost" size="icon" className="h-8 w-8 mt-0.5"><ArrowLeft className="w-4 h-4" /></Button>
-          </Link>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild><Link href="/chantier"><ArrowLeft className="w-5 h-5" /></Link></Button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">{site.name}</h1>
-              <Badge className={getSiteStatusColor(site.status)}>{SITE_STATUS_LABELS[site.status]}</Badge>
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-              {project && <span>{project.name}</span>}
-              {site.address && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{site.address}</span>}
-              {openIncidents > 0 && (
-                <span className="flex items-center gap-1 text-orange-600 font-medium">
-                  <AlertTriangle className="w-3.5 h-3.5" />{openIncidents} incident(s) ouvert(s)
-                </span>
-              )}
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight">{site.name}</h1>
+            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <MapPin className="w-3.5 h-3.5" /> {site.address || "Adresse non renseignée"}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Select value={site.status} onValueChange={v => updateSite.mutate({ id: siteId, status: v as any })}>
-            <SelectTrigger className="w-36 h-8 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="planning">Planification</SelectItem>
-              <SelectItem value="active">Actif</SelectItem>
-              <SelectItem value="paused">Pausé</SelectItem>
-              <SelectItem value="completed">Terminé</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => { if (confirm("Supprimer ce chantier ?")) deleteSite.mutate({ id: siteId }); }}
-          >
+        <div className="flex items-center gap-2">
+          <Badge className={getSiteStatusColor(site.status)}>
+            {SITE_STATUS_LABELS[site.status]}
+          </Badge>
+          <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10"
+            onClick={() => { if (confirm("Supprimer ce chantier ?")) deleteSite.mutate({ id: site.id }); }}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Progress */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">Avancement du chantier</span>
-            <span className="text-sm font-bold text-primary">{site.progress ?? 0}%</span>
-          </div>
-          <Slider
-            value={[site.progress ?? 0]}
-            min={0} max={100} step={5}
-            onValueCommit={([v]) => updateSite.mutate({ id: siteId, progress: v })}
-            className="w-full"
-          />
-          <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-            <span>Début</span>
-            <span>Terminé</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-lg">Informations Générales</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Projet associé</Label>
+                <p className="text-sm font-medium">
+                  {projects?.find(p => p.id === site.projectId)?.name || "Chargement..."}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Dates</Label>
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                  {formatDate(site.startDate)} — {formatDate(site.endDate)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Tabs */}
-      <Tabs defaultValue="journal">
-        <TabsList className="bg-muted/50">
-          <TabsTrigger value="journal" className="gap-2">
-            <BookOpen className="w-3.5 h-3.5" />Journal ({journal?.length ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="meetings" className="gap-2">
-            <Users className="w-3.5 h-3.5" />Réunions ({meetings?.length ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="incidents" className="gap-2">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Incidents
-            {openIncidents > 0 && (
-              <span className="ml-1 w-4 h-4 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center">
-                {openIncidents}
-              </span>
-            )}
-          </TabsTrigger>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-lg">Actions Rapides</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setJournalOpen(true)}>
+              <BookOpen className="w-4 h-4" /> Ajouter au journal
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setMeetingOpen(true)}>
+              <Users className="w-4 h-4" /> Nouveau compte-rendu
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={() => setIncidentOpen(true)}>
+              <AlertTriangle className="w-4 h-4" /> Signaler un incident
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="journal" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsTrigger value="journal">Journal</TabsTrigger>
+          <TabsTrigger value="meetings">Réunions</TabsTrigger>
+          <TabsTrigger value="incidents">Incidents</TabsTrigger>
         </TabsList>
 
         {/* Journal Tab */}
@@ -209,36 +191,21 @@ export default function SiteDetail() {
                         </div>
                         <div className="space-y-1.5">
                           <Label>Météo</Label>
-                          <Select value={journalForm.weather} onValueChange={v => setJournalForm(f => ({ ...f, weather: v }))}>
-                            <SelectTrigger><SelectValue placeholder="Météo" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Ensoleillé">☀️ Ensoleillé</SelectItem>
-                              <SelectItem value="Nuageux">⛅ Nuageux</SelectItem>
-                              <SelectItem value="Pluvieux">🌧️ Pluvieux</SelectItem>
-                              <SelectItem value="Venteux">💨 Venteux</SelectItem>
-                              <SelectItem value="Neige">❄️ Neige</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Input value={journalForm.weather} onChange={e => setJournalForm(f => ({ ...f, weather: e.target.value }))} placeholder="Ex: Ensoleillé" />
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Travaux effectués <span className="text-destructive">*</span></Label>
+                        <Label>Contenu <span className="text-destructive">*</span></Label>
                         <Textarea
-                          value={journalForm.workDescription}
-                          onChange={e => setJournalForm(f => ({ ...f, workDescription: e.target.value }))}
+                          value={journalForm.content}
+                          onChange={e => setJournalForm(f => ({ ...f, content: e.target.value }))}
                           placeholder="Description des travaux effectués..."
-                          rows={3}
+                          rows={5}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label>Nombre d'ouvriers</Label>
-                          <Input type="number" value={journalForm.workers} onChange={e => setJournalForm(f => ({ ...f, workers: e.target.value }))} placeholder="0" />
-                        </div>
-                      </div>
                       <div className="space-y-1.5">
-                        <Label>Notes</Label>
-                        <Textarea value={journalForm.notes} onChange={e => setJournalForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+                        <Label>Auteur</Label>
+                        <Input value={journalForm.author} onChange={e => setJournalForm(f => ({ ...f, author: e.target.value }))} placeholder="Nom de l'auteur" />
                       </div>
                       <div className="flex gap-2 justify-end">
                         <Button variant="outline" onClick={() => setJournalOpen(false)}>Annuler</Button>
@@ -247,11 +214,9 @@ export default function SiteDetail() {
                             siteId,
                             date: new Date(journalForm.date),
                             weather: journalForm.weather || undefined,
-                            workDescription: journalForm.workDescription,
-                            workers: journalForm.workers ? parseInt(journalForm.workers) : undefined,
-                            notes: journalForm.notes || undefined,
+                            workDescription: journalForm.content,
                           })}
-                          disabled={!journalForm.workDescription || addJournal.isPending}
+                          disabled={!journalForm.content || addJournal.isPending}
                         >Ajouter</Button>
                       </div>
                     </div>
@@ -267,7 +232,7 @@ export default function SiteDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {journal.map(entry => (
+                  {journal.map((entry: any) => (
                     <div key={entry.id} className="p-4 rounded-lg border border-border">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
@@ -280,14 +245,8 @@ export default function SiteDetail() {
                           <div>
                             <div className="flex items-center gap-2">
                               {entry.weather && <span className="text-sm">{entry.weather}</span>}
-                              {entry.workers && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <HardHat className="w-3 h-3" />{entry.workers} ouvriers
-                                </span>
-                              )}
                             </div>
-                            <p className="text-sm mt-1">{entry.workDescription}</p>
-                            {entry.notes && <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>}
+                            <p className="text-sm mt-1 whitespace-pre-wrap">{entry.workDescription}</p>
                           </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
@@ -331,16 +290,8 @@ export default function SiteDetail() {
                         <Input value={meetingForm.attendees} onChange={e => setMeetingForm(f => ({ ...f, attendees: e.target.value }))} placeholder="Jean Dupont, Marie Martin..." />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Résumé</Label>
-                        <Textarea value={meetingForm.summary} onChange={e => setMeetingForm(f => ({ ...f, summary: e.target.value }))} rows={3} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Décisions prises (une par ligne)</Label>
-                        <Textarea value={meetingForm.decisions} onChange={e => setMeetingForm(f => ({ ...f, decisions: e.target.value }))} rows={2} placeholder="Décision 1&#10;Décision 2" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Actions suivantes (une par ligne)</Label>
-                        <Textarea value={meetingForm.nextActions} onChange={e => setMeetingForm(f => ({ ...f, nextActions: e.target.value }))} rows={2} />
+                        <Label>Contenu</Label>
+                        <Textarea value={meetingForm.content} onChange={e => setMeetingForm(f => ({ ...f, content: e.target.value }))} rows={5} />
                       </div>
                       <div className="flex gap-2 justify-end">
                         <Button variant="outline" onClick={() => setMeetingOpen(false)}>Annuler</Button>
@@ -350,9 +301,7 @@ export default function SiteDetail() {
                             date: new Date(meetingForm.date),
                             title: meetingForm.title,
                             attendees: meetingForm.attendees ? meetingForm.attendees.split(",").map(s => s.trim()) : [],
-                            summary: meetingForm.summary || undefined,
-                            decisions: meetingForm.decisions ? meetingForm.decisions.split("\n").filter(Boolean) : [],
-                            nextActions: meetingForm.nextActions ? meetingForm.nextActions.split("\n").filter(Boolean) : [],
+                            summary: meetingForm.content || undefined,
                           })}
                           disabled={!meetingForm.title || addMeeting.isPending}
                         >Ajouter</Button>
@@ -370,10 +319,8 @@ export default function SiteDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {meetings.map(meeting => {
+                  {meetings.map((meeting: any) => {
                     const attendees = Array.isArray(meeting.attendees) ? meeting.attendees : [];
-                    const decisions = Array.isArray(meeting.decisions) ? meeting.decisions : [];
-                    const nextActions = Array.isArray(meeting.nextActions) ? meeting.nextActions : [];
                     return (
                       <div key={meeting.id} className="p-4 rounded-lg border border-border">
                         <div className="flex items-start justify-between">
@@ -387,29 +334,7 @@ export default function SiteDetail() {
                                 Participants : {attendees.join(", ")}
                               </p>
                             )}
-                            {meeting.summary && <p className="text-sm mt-2 text-muted-foreground">{meeting.summary}</p>}
-                            {decisions.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs font-medium text-foreground mb-1">Décisions :</p>
-                                {decisions.map((d: string, i: number) => (
-                                  <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                    <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                                    <span>{d}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {nextActions.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs font-medium text-foreground mb-1">Actions :</p>
-                                {nextActions.map((a: string, i: number) => (
-                                  <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                    <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
-                                    <span>{a}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            {meeting.summary && <p className="text-sm mt-2 text-muted-foreground whitespace-pre-wrap">{meeting.summary}</p>}
                           </div>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
                             onClick={() => deleteMeeting.mutate({ id: meeting.id })}>
@@ -490,7 +415,7 @@ export default function SiteDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {incidents.map(incident => (
+                  {incidents.map((incident: any) => (
                     <div key={incident.id} className={`p-4 rounded-lg border ${
                       incident.status === "resolved" ? "border-border opacity-60" : "border-orange-200 bg-orange-50/50"
                     }`}>
@@ -504,7 +429,7 @@ export default function SiteDetail() {
                             <span className="text-xs text-muted-foreground">{formatDate(incident.date)}</span>
                           </div>
                           {incident.description && <p className="text-sm text-muted-foreground mt-1">{incident.description}</p>}
-                          {incident.resolution && <p className="text-xs text-green-600 mt-1">✓ {incident.resolution}</p>}
+                          {incident.resolvedDate && <p className="text-xs text-green-600 mt-1">✓ Résolu le {formatDate(incident.resolvedDate)}</p>}
                         </div>
                         <Select
                           value={incident.status}
@@ -521,6 +446,7 @@ export default function SiteDetail() {
                             <SelectItem value="open">Ouvert</SelectItem>
                             <SelectItem value="in_progress">En cours</SelectItem>
                             <SelectItem value="resolved">Résolu</SelectItem>
+                            <SelectItem value="closed">Fermé</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
