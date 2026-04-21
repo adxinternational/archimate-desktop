@@ -500,7 +500,7 @@ export async function addSiteEnterprise(data: any) {
 export async function getAllTeamMembers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(teamMembers).where(eq((teamMembers as any).active, true)).orderBy(teamMembers.name);
+  return db.select().from(teamMembers).where(eq(teamMembers.status, "active")).orderBy(teamMembers.name);
 }
 
 export async function createTeamMember(data: InsertTeamMember) {
@@ -642,7 +642,7 @@ export async function deleteExpense(id: number) {
 export async function getActiveAlerts() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(alerts).where(eq(alerts.status, "active")).orderBy(desc(alerts.createdAt));
+  return db.select().from(alerts).where(eq(alerts.isResolved, false)).orderBy(desc(alerts.createdAt));
 }
 
 export async function createAlert(data: InsertAlert) {
@@ -654,13 +654,13 @@ export async function createAlert(data: InsertAlert) {
 export async function acknowledgeAlert(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(alerts).set({ status: "acknowledged", acknowledgedAt: new Date() }).where(eq(alerts.id, id));
+  await db.update(alerts).set({ isRead: true }).where(eq(alerts.id, id));
 }
 
 export async function resolveAlert(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(alerts).set({ status: "resolved", resolvedAt: new Date() }).where(eq(alerts.id, id));
+  await db.update(alerts).set({ isResolved: true }).where(eq(alerts.id, id));
 }
 
 // ── Dashboard KPIs ────────────────────────────────────────────
@@ -686,8 +686,8 @@ export async function getDashboardKPIs() {
   const activeProjects = allProjects.filter(p => p.status === "active").length;
   const totalBudget = allProjects.filter(p => p.status === "active").reduce((s, p) => s + (p.budgetEstimated ?? 0), 0);
   const overdueTasks = allTasks.filter(t => t.status !== "done" && t.dueDate && new Date(t.dueDate) < now).length;
-  const hoursThisMonth = monthlyTime.reduce((s, e) => s + (e as any).duration, 0);
-  const revenueThisMonth = allInvoices.filter(i => i.status === "paid" && i.createdAt >= startOfMonth).reduce((s, i) => s + i.amount, 0);
+  const hoursThisMonth = monthlyTime.reduce((s, e) => s + (e.duration ?? 0), 0);
+  const revenueThisMonth = allInvoices.filter(i => i.status === "paid" && i.createdAt >= startOfMonth).reduce((s, i) => s + parseFloat(i.amount.toString()), 0);
   const pendingInvoices = allInvoices.filter(i => i.status === "sent" || i.status === "overdue").length;
 
   return { activeProjects, totalBudget, overdueTasks, hoursThisMonth, revenueThisMonth, pendingInvoices };

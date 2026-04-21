@@ -100,7 +100,7 @@ export async function convertLeadToClientWithProject(
     status: "active",
   });
 
-  const clientId = (newClient as any).insertId || newClient[0]?.id;
+  const clientId = (newClient as any).insertId || (newClient as any)[0]?.id;
 
   // Créer le projet
   const newProject = await db.insert(projects).values({
@@ -126,7 +126,7 @@ export async function convertLeadToClientWithProject(
 
   return {
     clientId,
-    projectId: (newProject as any).insertId || newProject[0]?.id,
+    projectId: (newProject as any).insertId || (newProject as any)[0]?.id,
     success: true,
   };
 }

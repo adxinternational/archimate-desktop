@@ -266,7 +266,7 @@ export const appRouter = router({
         actualAmount: z.string().optional(),
         status: z.enum(["draft", "approved", "in_progress", "completed"]).optional(),
       }))
-      .mutation(({ input }) => { const { id, ...data } = input; return updateCostEstimate(id, data); }),
+      .mutation(({ input }) => { const { id, ...data } = input; return updateCostEstimate(id, data as any); }),
     getBuildingPermits: publicProcedure
       .input(z.object({ projectId: z.number() }))
       .query(({ input }) => getBuildingPermitsByProject(input.projectId)),
@@ -352,7 +352,7 @@ export const appRouter = router({
         workers: z.number().optional(),
         notes: z.string().optional(),
       }))
-      .mutation(({ input }) => createJournalEntry({ ...input, photos: [] })),
+      .mutation(({ input }) => createJournalEntry(input as any)),
     deleteJournalEntry: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteJournalEntry(input.id)),
     meetings: publicProcedure.input(z.object({ siteId: z.number() })).query(({ input }) => getMeetingsBySite(input.siteId)),
     addMeeting: publicProcedure
@@ -564,7 +564,19 @@ export const appRouter = router({
         title: z.string(),
         description: z.string().optional(),
       }))
-      .mutation(({ input }) => createAlert(input)),
+      .mutation(({ input }) => {
+        const { type, description, ...rest } = input;
+        const validTypes = ["deadline", "budget", "incident", "task", "crm", "other"];
+        const finalType = validTypes.includes(type) ? type : "other";
+        const validSeverities = ["info", "warning", "critical"];
+        const finalSeverity = validSeverities.includes(input.severity) ? input.severity : "info";
+        return createAlert({
+          ...rest,
+          type: finalType as any,
+          severity: finalSeverity as any,
+          message: description || input.title,
+        } as any);
+      }),
     acknowledge: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => acknowledgeAlert(input.id)),
     resolve: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => resolveAlert(input.id)),
   }),

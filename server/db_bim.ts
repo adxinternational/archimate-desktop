@@ -133,7 +133,7 @@ export async function getBIMProjectStats(projectId: number) {
     totalModels: models.size,
     totalVersions,
     latestUpdate,
-    formats: [...new Set(allBIMDocs.map(d => d.mimeType))],
+    formats: Array.from(new Set(allBIMDocs.map(d => d.mimeType))),
   };
 }
 
