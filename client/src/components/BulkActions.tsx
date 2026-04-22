@@ -42,8 +42,7 @@ export function BulkActionsBar({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Checkbox
-            checked={selectedCount === totalCount}
-            indeterminate={selectedCount > 0 && selectedCount < totalCount}
+            checked={selectedCount === totalCount ? true : selectedCount > 0 ? "indeterminate" : false}
             onCheckedChange={(checked) => onSelectAll(!!checked)}
             disabled={isLoading}
           />

@@ -38,9 +38,8 @@ export default function ProjectCreate() {
   const createMutation = trpc.projects.create.useMutation({
     onSuccess: (data: any) => {
       utils.projects.list.invalidate();
-      utils.dashboard.recentProjects.invalidate();
       toast.success("Projet créé avec succès");
-      navigate(`/projets/${(data as any)?.insertId ?? ""}`);
+      navigate(`/projects/${(data as any)?.id ?? ""}`);
     },
     onError: (err) => toast.error("Erreur : " + err.message),
   });
@@ -64,7 +63,7 @@ export default function ProjectCreate() {
   return (
     <div className="p-6 max-w-2xl mx-auto animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/projets">
+        <Link href="/projects">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -198,7 +197,7 @@ export default function ProjectCreate() {
         </Card>
 
         <div className="flex gap-3 mt-6 justify-end">
-          <Link href="/projets">
+          <Link href="/projects">
             <Button type="button" variant="outline">Annuler</Button>
           </Link>
           <Button type="submit" disabled={createMutation.isPending} className="gap-2">

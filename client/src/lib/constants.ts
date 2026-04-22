@@ -1,18 +1,16 @@
 export const PHASE_LABELS: Record<string, string> = {
-  feasibility: "Faisabilité",
-  sketch: "Esquisse",
-  preliminary: "Avant-projet",
-  detailed: "Projet détaillé",
-  execution: "Dossier d'exécution",
-  site_prep: "Préparation chantier",
-  construction: "Construction",
-  delivery: "Livraison",
-  archived: "Archivé",
+  esq: "ESQ — Esquisse",
+  aps: "APS — Avant-Projet Sommaire",
+  apd: "APD — Avant-Projet Définitif",
+  pro: "PRO — Projet",
+  dce: "DCE — Dossier de Consultation des Entreprises",
+  exe: "EXE — Études d'Exécution",
+  det: "DET — Direction de l'Exécution des Travaux",
+  aor: "AOR — Assistance aux Opérations de Réception",
 };
 
 export const PHASE_ORDER = [
-  "feasibility", "sketch", "preliminary", "detailed",
-  "execution", "site_prep", "construction", "delivery", "archived",
+  "esq", "aps", "apd", "pro", "dce", "exe", "det", "aor"
 ] as const;
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -45,10 +43,9 @@ export const INVOICE_STATUS_LABELS: Record<string, string> = {
 };
 
 export const SITE_STATUS_LABELS: Record<string, string> = {
-  planning: "Planification",
   active: "Actif",
-  paused: "Pausé",
   completed: "Terminé",
+  suspended: "Suspendu",
 };
 
 export const CLIENT_TYPE_LABELS: Record<string, string> = {
@@ -74,14 +71,16 @@ export const INCIDENT_SEVERITY_LABELS: Record<string, string> = {
 };
 
 export const PROCEDURE_STATUS_LABELS: Record<string, string> = {
-  pending: "En attente",
+  draft: "Brouillon",
   submitted: "Soumis",
   approved: "Approuvé",
   rejected: "Rejeté",
+  expired: "Expiré",
 };
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+export function formatCurrency(amount: number | string | null | undefined): string {
+  const numericAmount = typeof amount === "string" ? parseFloat(amount) : (amount ?? 0);
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(numericAmount);
 }
 
 export function formatDate(date: Date | string | null | undefined): string {
@@ -103,15 +102,14 @@ export function formatRelativeDate(date: Date | string): string {
 
 export function getPhaseColor(phase: string): string {
   const colors: Record<string, string> = {
-    feasibility: "bg-purple-100 text-purple-700 border-purple-200",
-    sketch: "bg-blue-100 text-blue-700 border-blue-200",
-    preliminary: "bg-cyan-100 text-cyan-700 border-cyan-200",
-    detailed: "bg-teal-100 text-teal-700 border-teal-200",
-    execution: "bg-green-100 text-green-700 border-green-200",
-    site_prep: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    construction: "bg-orange-100 text-orange-700 border-orange-200",
-    delivery: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    archived: "bg-gray-100 text-gray-600 border-gray-200",
+    esq: "bg-purple-100 text-purple-700 border-purple-200",
+    aps: "bg-blue-100 text-blue-700 border-blue-200",
+    apd: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    pro: "bg-teal-100 text-teal-700 border-teal-200",
+    dce: "bg-green-100 text-green-700 border-green-200",
+    exe: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    det: "bg-orange-100 text-orange-700 border-orange-200",
+    aor: "bg-emerald-100 text-emerald-700 border-emerald-200",
   };
   return colors[phase] ?? "bg-gray-100 text-gray-600 border-gray-200";
 }
@@ -149,10 +147,9 @@ export function getInvoiceStatusColor(status: string): string {
 
 export function getSiteStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    planning: "bg-blue-100 text-blue-700",
     active: "bg-green-100 text-green-700",
-    paused: "bg-yellow-100 text-yellow-700",
     completed: "bg-gray-100 text-gray-600",
+    suspended: "bg-yellow-100 text-yellow-700",
   };
   return colors[status] ?? "bg-gray-100 text-gray-600";
 }
