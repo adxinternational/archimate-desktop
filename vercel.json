@@ -3,7 +3,7 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "routes": [
-    { "src": "^/api/(.*)", "dest": "/api/$1" },
-    { "src": "^(.*)$", "dest": "/index.html" }
+    { "src": "^/api/(.*)", "dest": "/api/[...all].ts" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
