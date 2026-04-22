@@ -1,8 +1,5 @@
 import app from "../server/_core/index";
 
-export default async (req: any, res: any) => {
-  // 🔴 CORRECTION : enlever /api du path
-  req.url = req.url.replace(/^\/api/, "") || "/";
-
+export default async function handler(req: any, res: any) {
   return app(req, res);
-};
+}
