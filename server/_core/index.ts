@@ -3,6 +3,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerAuthRoutes } from "./auth";
+import { registerChatRoutes } from "./chat";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { setupVite, serveStatic } from "./vite";
@@ -44,6 +45,7 @@ app.get("/api/health", (_, res) => {
 });
 
 registerAuthRoutes(app);
+registerChatRoutes(app);
 
 app.use(
   "/api/trpc",

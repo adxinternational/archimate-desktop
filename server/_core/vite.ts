@@ -23,8 +23,8 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  (app as any).use(vite.middlewares);
-  (app as any).use("*", async (req, res, next) => {
+  app.use(vite.middlewares);
+  app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -61,10 +61,10 @@ export async function serveStatic(app: Express) {
     );
   }
 
-  (app as any).use(express.static(distPath));
+  app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  (app as any).use("*", (_req, res) => {
+  app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
