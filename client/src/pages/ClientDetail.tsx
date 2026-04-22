@@ -31,7 +31,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 export default function ClientDetail() {
   const [, params] = useRoute("/clients/:id");
   const [, navigate] = useLocation();
-  const clientId = parseInt(params?.id ?? "0");
+  const clientId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>(null);

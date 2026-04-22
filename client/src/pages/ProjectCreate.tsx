@@ -28,7 +28,7 @@ export default function ProjectCreate() {
     description: "",
     address: "",
     city: "",
-    currentPhase: "feasibility" as const,
+    currentPhase: "esq" as const,
     budgetEstimated: "",
     startDate: "",
   });

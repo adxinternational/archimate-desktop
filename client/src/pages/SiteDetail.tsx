@@ -23,7 +23,7 @@ import { formatDate, getSiteStatusColor, SITE_STATUS_LABELS, getIncidentSeverity
 export default function SiteDetail() {
   const [, params] = useRoute("/chantier/:id");
   const [, navigate] = useLocation();
-  const siteId = parseInt(params?.id ?? "0");
+  const siteId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
 
   const { data: site, isLoading } = trpc.sites.byId.useQuery({ id: siteId });
@@ -352,7 +352,7 @@ export default function SiteDetail() {
                             attendees: meetingForm.attendees ? meetingForm.attendees.split(",").map(s => s.trim()) : [],
                             summary: meetingForm.summary || undefined,
                             decisions: meetingForm.decisions ? meetingForm.decisions.split("\n").filter(Boolean) : [],
-                            nextActions: meetingForm.nextActions ? meetingForm.nextActions.split("\n").filter(Boolean) : [],
+                            nextActions: meetingForm.nextActions ? meetingForm.nextActions.split("\n").filter(Boolean).map(a => ({ action: a, responsible: "", dueDate: undefined })) : [],
                           })}
                           disabled={!meetingForm.title || addMeeting.isPending}
                         >Ajouter</Button>
@@ -402,10 +402,10 @@ export default function SiteDetail() {
                             {nextActions.length > 0 && (
                               <div className="mt-2">
                                 <p className="text-xs font-medium text-foreground mb-1">Actions :</p>
-                                {nextActions.map((a: string, i: number) => (
+                                {nextActions.map((a: any, i: number) => (
                                   <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
                                     <Clock className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" />
-                                    <span>{a}</span>
+                                    <span>{a.action || a}</span>
                                   </div>
                                 ))}
                               </div>

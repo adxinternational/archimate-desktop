@@ -338,9 +338,9 @@ function FinancesTab() {
     onSuccess: () => utils.expenses.list.invalidate(),
   });
 
-  const totalRevenue = invoices?.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount ?? 0), 0) ?? 0;
-  const totalExpenses = expenses?.reduce((s, e) => s + (e.amount ?? 0), 0) ?? 0;
-  const pendingAmount = invoices?.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + (i.amount ?? 0), 0) ?? 0;
+  const totalRevenue = invoices?.filter(i => i.status === "paid").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0) ?? 0;
+  const totalExpenses = expenses?.reduce((s, e) => s + (parseFloat(e.amount as any) ?? 0), 0) ?? 0;
+  const pendingAmount = invoices?.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0) ?? 0;
 
   const EXPENSE_CATEGORIES = ["Matériaux", "Sous-traitance", "Déplacements", "Logiciels", "Fournitures", "Formation", "Autre"];
 
@@ -488,7 +488,7 @@ function FinancesTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{formatCurrency(invoice.amount ?? 0)}</span>
+                      <span className="text-sm font-semibold">{formatCurrency(parseFloat(invoice.amount as any) ?? 0)}</span>
                       <Select value={invoice.status} onValueChange={v => updateInvoice.mutate({ id: invoice.id, status: v as any })}>
                         <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -594,7 +594,7 @@ function FinancesTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-red-600">-{formatCurrency(expense.amount ?? 0)}</span>
+                      <span className="text-sm font-semibold text-red-600">-{formatCurrency(parseFloat(expense.amount as any) ?? 0)}</span>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={() => deleteExpense.mutate({ id: expense.id })}>
                         <Trash2 className="w-3.5 h-3.5" />

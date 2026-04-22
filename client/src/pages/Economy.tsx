@@ -287,21 +287,21 @@ export default function Economy() {
                               )}
 
                               {/* Actions rapides */}
-                              {estimate.status !== "completed" && (
+                              {(estimate.status as any) !== "completed" && (
                                 <div className="flex gap-2 pt-1">
-                                  {estimate.status === "draft" && (
+                                  {(estimate.status as any) === "draft" && (
                                     <Button size="sm" variant="outline" className="text-xs h-7"
                                       onClick={() => updateEstimate.mutate({ id: estimate.id, status: "approved" })}>
                                       Approuver
                                     </Button>
                                   )}
-                                  {estimate.status === "approved" && (
+                                  {(estimate.status as any) === "approved" && (
                                     <Button size="sm" variant="outline" className="text-xs h-7"
                                       onClick={() => updateEstimate.mutate({ id: estimate.id, status: "in_progress" })}>
                                       Démarrer
                                     </Button>
                                   )}
-                                  {estimate.status === "in_progress" && (
+                                  {(estimate.status as any) === "in_progress" && (
                                     <Button size="sm" variant="outline" className="text-xs h-7"
                                       onClick={() => updateEstimate.mutate({ id: estimate.id, status: "completed" })}>
                                       Terminer

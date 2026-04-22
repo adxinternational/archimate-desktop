@@ -54,13 +54,13 @@ export default function EnhancedDashboard() {
 
     const monthlyRevenue = invoices
       .filter(i => i.status === "paid" && new Date(i.createdAt) >= startOfMonth)
-      .reduce((s, i) => s + i.amount, 0);
+      .reduce((s, i) => s + (parseFloat(i.amount as any) || 0), 0);
 
-    const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.amount, 0);
+    const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + (parseFloat(i.amount as any) || 0), 0);
     const pendingRevenue = invoices.filter(i => i.status === "sent" || i.status === "overdue")
-      .reduce((s, i) => s + i.amount, 0);
+      .reduce((s, i) => s + (parseFloat(i.amount as any) || 0), 0);
 
-    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalExpenses = expenses.reduce((s, e) => s + (parseFloat(e.amount as any) || 0), 0);
 
     const activeSites = sites.filter(s => s.status === "active").length;
 
@@ -82,10 +82,10 @@ export default function EnhancedDashboard() {
     return months.map(({ month, year, m }) => {
       const revenue = invoices
         .filter(i => i.status === "paid" && new Date(i.createdAt).getMonth() === m && new Date(i.createdAt).getFullYear() === year)
-        .reduce((s, i) => s + i.amount, 0);
+        .reduce((s, i) => s + (parseFloat(i.amount as any) || 0), 0);
       const costs = expenses
         .filter(e => new Date(e.date).getMonth() === m && new Date(e.date).getFullYear() === year)
-        .reduce((s, e) => s + e.amount, 0);
+        .reduce((s, e) => s + (parseFloat(e.amount as any) || 0), 0);
       return { month, revenue, costs, margin: revenue - costs };
     });
   }, [invoices, expenses]);
