@@ -50,7 +50,7 @@ export async function setupVite(app: Application, server: Server) {
   });
 }
 
-export function serveStatic(app: Application) {
+export async function serveStatic(app: Application) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", "dist", "public")
