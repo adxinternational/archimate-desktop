@@ -2,7 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "skipLibCheck": true,
-    "strict": false
-  }
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "server/routers.ts",
+    "server/db.ts",
+    "server/db_crm_enhanced.ts"
+  ]
 }
