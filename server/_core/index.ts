@@ -5,7 +5,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerAuthRoutes } from "./auth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic } from "./vite";
+import { setupVite, serveStatic } from "./vite";
+import http from "http";
 
 const app = express();
 
@@ -52,6 +53,21 @@ app.use(
   })
 );
 
-serveStatic(app);
+if (process.env.NODE_ENV === "development") {
+  const server = http.createServer(app);
+  setupVite(app, server).then(() => {
+    server.listen(3000, "0.0.0.0", () => {
+      console.log("Server listening on port 3000");
+    });
+  });
+} else {
+  serveStatic(app);
+  if (process.env.NODE_ENV === "production" && process.argv[1].endsWith("dist/index.js")) {
+    const server = http.createServer(app);
+    server.listen(3000, "0.0.0.0", () => {
+      console.log("Production server listening on port 3000");
+    });
+  }
+}
 
 export default app;

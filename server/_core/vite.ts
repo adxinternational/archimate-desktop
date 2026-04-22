@@ -5,10 +5,11 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
 
-export function serveStatic(app: Application) {
+export async function setupVite(app: Application, server: Server) {
+  const { createServer: createViteServer } = await import("vite");
+  const { default: viteConfig } = await import("../../vite.config");
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -49,7 +50,7 @@ export function serveStatic(app: Application) {
   });
 }
 
-export function serveStatic(app: Express) {
+export function serveStatic(app: Application) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", "dist", "public")
