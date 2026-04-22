@@ -236,7 +236,7 @@ export type InsertDocument = typeof documents.$inferInsert;
 // Administrative Procedures (Permis de Construire, DP, AT…)
 // ============================================================
 export const adminProcedures = mysqlTable("admin_procedures", {
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").autoincrement(),
   projectId: int("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   type: mysqlEnum("type", ["PC", "DP", "AT", "CU", "ERP", "autre"]).default("PC").notNull(),
