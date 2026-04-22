@@ -1,12 +1,12 @@
 import { fileURLToPath } from "url";
 import express from "express";
-import type { Application } from "express";
+import type { Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 
-export async function setupVite(app: Application, server: Server) {
+export async function setupVite(app: Express, server: Server) {
   const { createServer: createViteServer } = await import("vite");
   const { default: viteConfig } = await import("../../vite.config");
 
@@ -23,8 +23,8 @@ export async function setupVite(app: Application, server: Server) {
     appType: "custom",
   });
 
-  app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  (app as any).use(vite.middlewares);
+  (app as any).use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -50,7 +50,7 @@ export async function setupVite(app: Application, server: Server) {
   });
 }
 
-export async function serveStatic(app: Application) {
+export async function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", "dist", "public")
@@ -61,10 +61,10 @@ export async function serveStatic(app: Application) {
     );
   }
 
-  app.use(express.static(distPath));
+  (app as any).use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  (app as any).use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
