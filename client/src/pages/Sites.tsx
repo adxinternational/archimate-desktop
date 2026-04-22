@@ -13,18 +13,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { ContextMenu, CommonContextActions } from "@/components/ContextMenu";
 import {
   Plus, Search, HardHat, MapPin, ArrowRight, Calendar,
   BookOpen, Users, AlertTriangle, ChevronDown, Trash2
 } from "lucide-react";
 import { formatDate, getSiteStatusColor, SITE_STATUS_LABELS, getIncidentSeverityColor, INCIDENT_SEVERITY_LABELS } from "@/lib/constants";
 
-function SiteCard({ site, projectName }: { site: any; projectName?: string }) {
+function SiteCard({ site, projectName, onDelete }: { site: any; projectName?: string; onDelete: (id: number) => void }) {
+  const actions = [
+    CommonContextActions.view(() => {}), // Link handles it but good for consistency
+    CommonContextActions.delete(() => {
+      if (confirm(`Supprimer le chantier "${site.name}" ?`)) {
+        onDelete(site.id);
+      }
+    }),
+  ];
+
   return (
-    <Link href={`/chantier/${site.id}`}>
-      <Card className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group h-full">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between mb-3">
+    <Card className="border-0 shadow-sm hover:shadow-md transition-all group h-full relative">
+      <div className="absolute top-4 right-4 z-10">
+        <ContextMenu actions={actions} />
+      </div>
+      <Link href={`/sites/${site.id}`}>
+        <CardContent className="p-5 cursor-pointer">
+          <div className="flex items-start justify-between mb-3 pr-8">
             <div className="flex-1 min-w-0 mr-2">
               <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                 {site.name}
@@ -58,8 +71,8 @@ function SiteCard({ site, projectName }: { site: any; projectName?: string }) {
             <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+    </Card>
   );
 }
 
@@ -81,6 +94,14 @@ export default function Sites() {
       setCreateOpen(false);
       setForm({ name: "", projectId: "", address: "", progress: "0", startDate: "", status: "planning" });
       toast.success("Chantier créé");
+    },
+    onError: (err) => toast.error("Erreur : " + err.message),
+  });
+
+  const deleteMutation = trpc.sites.delete.useMutation({
+    onSuccess: () => {
+      utils.sites.list.invalidate();
+      toast.success("Chantier supprimé");
     },
     onError: (err) => toast.error("Erreur : " + err.message),
   });
@@ -191,7 +212,7 @@ export default function Sites() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(site => {
             const project = projects?.find(p => p.id === site.projectId);
-            return <SiteCard key={site.id} site={site} projectName={project?.name} />;
+            return <SiteCard key={site.id} site={site} projectName={project?.name} onDelete={(id) => deleteMutation.mutate({ id })} />;
           })}
         </div>
       )}

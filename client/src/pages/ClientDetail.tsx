@@ -1,20 +1,32 @@
-import { useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   ArrowLeft, Edit2, Trash2, Mail, Phone, MapPin, FolderOpen,
-  Save, X, Building2, User, Landmark
+  Save, X, Building2, User, Landmark, Loader2
 } from "lucide-react";
 import { formatCurrency, formatDate, getPhaseColor, getStatusColor, PHASE_LABELS, STATUS_LABELS, CLIENT_TYPE_LABELS } from "@/lib/constants";
+
+const clientSchema = z.object({
+  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  type: z.enum(["individual", "company", "public"]),
+  email: z.string().email("Email invalide").or(z.literal("")).optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.enum(["prospect", "active", "inactive"]),
+});
+
+type ClientFormValues = z.infer<typeof clientSchema>;
 
 const CLIENT_STATUS_COLORS: Record<string, string> = {
   prospect: "bg-yellow-100 text-yellow-700",
@@ -34,10 +46,23 @@ export default function ClientDetail() {
   const clientId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<any>(null);
 
   const { data: client, isLoading } = trpc.clients.byId.useQuery({ id: clientId });
   const { data: clientProjects } = trpc.clients.projects.useQuery({ clientId });
+
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientSchema),
+    defaultValues: {
+      name: "",
+      type: "individual",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      notes: "",
+      status: "active",
+    },
+  });
 
   const updateMutation = trpc.clients.update.useMutation({
     onSuccess: () => { utils.clients.byId.invalidate(); utils.clients.list.invalidate(); setEditing(false); toast.success("Client mis à jour"); },
@@ -69,16 +94,23 @@ export default function ClientDetail() {
   const TypeIcon = TYPE_ICONS[client.type] ?? User;
 
   const startEditing = () => {
-    setForm({
-      name: client.name, type: client.type, email: client.email ?? "",
-      phone: client.phone ?? "", address: client.address ?? "",
-      city: client.city ?? "", notes: client.notes ?? "", status: client.status,
-    });
-    setEditing(true);
+    if (client) {
+      form.reset({
+        name: client.name,
+        type: client.type as any,
+        email: client.email ?? "",
+        phone: client.phone ?? "",
+        address: client.address ?? "",
+        city: client.city ?? "",
+        notes: client.notes ?? "",
+        status: client.status as any,
+      });
+      setEditing(true);
+    }
   };
 
-  const saveEdit = () => {
-    updateMutation.mutate({ id: clientId, ...form });
+  const onSave = (values: ClientFormValues) => {
+    updateMutation.mutate({ id: clientId, ...values });
   };
 
   return (
@@ -117,8 +149,9 @@ export default function ClientDetail() {
             </>
           ) : (
             <>
-              <Button size="sm" className="gap-2 h-8" onClick={saveEdit} disabled={updateMutation.isPending}>
-                <Save className="w-3.5 h-3.5" />Enregistrer
+              <Button size="sm" className="gap-2 h-8" onClick={form.handleSubmit(onSave)} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Enregistrer
               </Button>
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
                 <X className="w-4 h-4" />
@@ -134,43 +167,100 @@ export default function ClientDetail() {
           <CardHeader className="pb-3"><CardTitle className="text-sm">Coordonnées</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {editing ? (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Nom</Label>
-                  <Input value={form.name} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Statut</Label>
-                  <Select value={form.status} onValueChange={v => setForm((f: any) => ({ ...f, status: v }))}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="prospect">Prospect</SelectItem>
-                      <SelectItem value="active">Actif</SelectItem>
-                      <SelectItem value="inactive">Inactif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Email</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Téléphone</Label>
-                  <Input value={form.phone} onChange={e => setForm((f: any) => ({ ...f, phone: e.target.value }))} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Adresse</Label>
-                  <Input value={form.address} onChange={e => setForm((f: any) => ({ ...f, address: e.target.value }))} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Ville</Label>
-                  <Input value={form.city} onChange={e => setForm((f: any) => ({ ...f, city: e.target.value }))} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Notes</Label>
-                  <Textarea value={form.notes} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} rows={3} className="text-sm resize-none" />
-                </div>
-              </div>
+              <Form {...form}>
+                <form className="space-y-3">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-xs">Nom</FormLabel>
+                        <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-xs">Statut</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="prospect">Prospect</SelectItem>
+                            <SelectItem value="active">Actif</SelectItem>
+                            <SelectItem value="inactive">Inactif</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-xs">Email</FormLabel>
+                          <FormControl><Input {...field} type="email" className="h-8 text-sm" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-xs">Téléphone</FormLabel>
+                          <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-xs">Adresse</FormLabel>
+                          <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-xs">Ville</FormLabel>
+                          <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-xs">Notes</FormLabel>
+                        <FormControl><Textarea {...field} rows={3} className="text-sm resize-none" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </form>
+              </Form>
             ) : (
               <>
                 {client.email && (

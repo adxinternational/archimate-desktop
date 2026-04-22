@@ -35,6 +35,9 @@ import {
   // Enterprises
   getAllEnterprises, createEnterprise, updateEnterprise, deleteEnterprise,
   getSiteEnterprises, addSiteEnterprise,
+  // Notes & Blog
+  getAllNotes, createNote, deleteNote, toggleNoteFavorite,
+  getAllPosts, createPost, updatePost, deletePost,
 } from "./db";
 
 const PHASES = ["esq", "aps", "apd", "pro", "dce", "exe", "det", "aor"] as const;
@@ -579,6 +582,51 @@ export const appRouter = router({
       }),
     acknowledge: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => acknowledgeAlert(input.id)),
     resolve: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => resolveAlert(input.id)),
+  }),
+  
+  // ── Notes ─────────────────────────────────────────────────
+  notes: router({
+    list: publicProcedure.query(() => getAllNotes()),
+    create: publicProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        content: z.string().optional(),
+        category: z.string().optional(),
+        projectId: z.number().optional(),
+        clientId: z.number().optional(),
+      }))
+      .mutation(({ input }) => createNote(input as any)),
+    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteNote(input.id)),
+    toggleFavorite: publicProcedure
+      .input(z.object({ id: z.number(), isFavorite: z.boolean() }))
+      .mutation(({ input }) => toggleNoteFavorite(input.id, input.isFavorite)),
+  }),
+
+  // ── Blog ──────────────────────────────────────────────────
+  blog: router({
+    list: publicProcedure.query(() => getAllPosts()),
+    create: publicProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        slug: z.string().min(1),
+        content: z.string().optional(),
+        excerpt: z.string().optional(),
+        coverImage: z.string().optional(),
+        status: z.enum(["draft", "published", "archived"]).optional(),
+      }))
+      .mutation(({ input }) => createPost(input as any)),
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        slug: z.string().optional(),
+        content: z.string().optional(),
+        excerpt: z.string().optional(),
+        coverImage: z.string().optional(),
+        status: z.enum(["draft", "published", "archived"]).optional(),
+      }))
+      .mutation(({ input }) => { const { id, ...data } = input; return updatePost(id, data as any); }),
+    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deletePost(input.id)),
   }),
 
   // ── File Upload ───────────────────────────────────────────

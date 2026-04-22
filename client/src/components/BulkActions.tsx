@@ -20,6 +20,7 @@ interface BulkAction {
 
 interface BulkActionsProps {
   selectedCount: number;
+  selectedIds: string[];
   totalCount: number;
   onSelectAll: (selected: boolean) => void;
   onClearSelection: () => void;
@@ -29,6 +30,7 @@ interface BulkActionsProps {
 
 export function BulkActionsBar({
   selectedCount,
+  selectedIds,
   totalCount,
   onSelectAll,
   onClearSelection,
@@ -67,7 +69,7 @@ export function BulkActionsBar({
                 key={action.id}
                 variant={action.variant || "outline"}
                 size="sm"
-                onClick={() => action.onClick(Array.from({ length: selectedCount }, (_, i) => String(i)))}
+                onClick={() => action.onClick(selectedIds)}
                 disabled={isLoading}
                 className="gap-2"
               >
@@ -87,7 +89,7 @@ export function BulkActionsBar({
                   <div key={action.id}>
                     {idx > 0 && action.variant === "destructive" && <DropdownMenuSeparator />}
                     <DropdownMenuItem
-                      onClick={() => action.onClick(Array.from({ length: selectedCount }, (_, i) => String(i)))}
+                      onClick={() => action.onClick(selectedIds)}
                       className={action.variant === "destructive" ? "text-red-600" : ""}
                     >
                       {action.icon && <span className="mr-2">{action.icon}</span>}

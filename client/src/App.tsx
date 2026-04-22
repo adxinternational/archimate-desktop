@@ -30,6 +30,8 @@ import BIM from "@/pages/BIM";
 import GanttPage from "@/pages/GanttPage";
 import SiteManagement from "@/pages/SiteManagement";
 import ProjectPerformance from "@/pages/ProjectPerformance";
+import Notes from "@/pages/Notes";
+import Blog from "@/pages/Blog";
 import NotFound from "@/pages/NotFound";
 
 // ── Guard : redirige vers /login si non authentifié ──────────
@@ -138,6 +140,14 @@ function Router() {
       {/* ── Notifications ───────────────────────────────── */}
       <Route path="/notifications">
         {() => <ProtectedRoute component={Notifications} />}
+      </Route>
+
+      {/* ── Notes & Blog ───────────────────────────────── */}
+      <Route path="/notes">
+        {() => <ProtectedRoute component={Notes} />}
+      </Route>
+      <Route path="/blog">
+        {() => <ProtectedRoute component={Blog} />}
       </Route>
 
       {/* ── 404 ─────────────────────────────────────────── */}

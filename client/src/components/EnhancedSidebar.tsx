@@ -4,7 +4,7 @@ import {
   ChevronDown, LayoutDashboard, FolderOpen, Users, Hammer, Building2,
   FileText, CheckSquare, Bell, Settings, LogOut, Menu, X,
   TrendingUp, Clock, DollarSign, MessageSquare, BarChart2,
-  CalendarDays, Map, Cpu, ShieldCheck,
+  CalendarDays, Map, Cpu, ShieldCheck, StickyNote, Newspaper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/_core/hooks/useAuth';
@@ -58,6 +58,8 @@ const NAVIGATION: NavSection[] = [
     items: [
       { label: 'Équipe & Tâches', icon: <Users size={16} />, href: '/cabinet' },
       { label: 'Rapports', icon: <BarChart2 size={16} />, href: '/reports' },
+      { label: 'Notes & Idées', icon: <StickyNote size={16} />, href: '/notes' },
+      { label: 'Blog & Actualités', icon: <Newspaper size={16} />, href: '/blog' },
       { label: 'Notifications', icon: <Bell size={16} />, href: '/notifications' },
     ],
   },

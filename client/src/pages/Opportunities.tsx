@@ -5,81 +5,66 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-  TrendingUp, Plus, Search, Filter, Eye, Edit, Trash2, ChevronRight
+  TrendingUp, Plus, Search, Filter, Eye, Edit, Trash2, ChevronRight, Loader2
 } from 'lucide-react';
+import { trpc } from '@/lib/trpc';
+import { ContextMenu, CommonContextActions } from '@/components/ContextMenu';
+import { toast } from 'sonner';
 
-const mockOpportunities = [
-  {
-    id: 1,
-    name: 'Rénovation Maison Toulouse',
-    client: 'Maison Toulouse - AVP Fin',
-    value: 150000,
-    probability: 85,
-    stage: 'Négociation',
-    expectedClose: '2026-04-15',
-    contact: 'Jean Dupont',
-  },
-  {
-    id: 2,
-    name: 'Extension Bâtiment Commercial',
-    client: 'Entreprise ABC',
-    value: 280000,
-    probability: 60,
-    stage: 'Proposition',
-    expectedClose: '2026-05-30',
-    contact: 'Marie Martin',
-  },
-  {
-    id: 3,
-    name: 'Aménagement Bureau',
-    client: 'Startup Tech',
-    value: 45000,
-    probability: 40,
-    stage: 'Prospection',
-    expectedClose: '2026-06-15',
-    contact: 'Pierre Bernard',
-  },
-  {
-    id: 4,
-    name: 'Restructuration Immeuble',
-    client: 'Groupe Immobilier',
-    value: 520000,
-    probability: 75,
-    stage: 'Négociation',
-    expectedClose: '2026-03-30',
-    contact: 'Sophie Lefevre',
-  },
-  {
-    id: 5,
-    name: 'Maison Écologique',
-    client: 'Particulier',
-    value: 180000,
-    probability: 30,
-    stage: 'Prospection',
-    expectedClose: '2026-07-01',
-    contact: 'Luc Moreau',
-  },
-];
+const stageLabels: Record<string, string> = {
+  new: 'Nouveau',
+  contacted: 'Contacté',
+  qualified: 'Qualifié',
+  proposal: 'Proposition',
+  negotiation: 'Négociation',
+  won: 'Gagné',
+  lost: 'Perdu',
+};
 
-const stageColors = {
-  'Prospection': 'bg-gray-100 text-gray-800',
-  'Proposition': 'bg-blue-100 text-blue-800',
-  'Négociation': 'bg-orange-100 text-orange-800',
-  'Gagné': 'bg-green-100 text-green-800',
-  'Perdu': 'bg-red-100 text-red-800',
+const stageColors: Record<string, string> = {
+  new: 'bg-gray-100 text-gray-800',
+  contacted: 'bg-blue-100 text-blue-800',
+  qualified: 'bg-yellow-100 text-yellow-800',
+  proposal: 'bg-purple-100 text-purple-800',
+  negotiation: 'bg-orange-100 text-orange-800',
+  won: 'bg-green-100 text-green-800',
+  lost: 'bg-red-100 text-red-800',
 };
 
 export default function Opportunities() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [opportunities, setOpportunities] = useState(mockOpportunities);
+  const utils = trpc.useUtils();
 
-  const filteredOpportunities = opportunities.filter(opp =>
+  const { data: leads = [], isLoading } = trpc.leads.list.useQuery();
+  const deleteMutation = trpc.leads.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Opportunité supprimée");
+      utils.leads.list.invalidate();
+    },
+  });
+
+  const filteredOpportunities = leads.filter(opp =>
     opp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    opp.client.toLowerCase().includes(searchTerm.toLowerCase())
+    (opp.company || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalValue = filteredOpportunities.reduce((sum, opp) => sum + opp.value, 0);
-  const weightedValue = filteredOpportunities.reduce((sum, opp) => sum + (opp.value * opp.probability / 100), 0);
+  const totalValue = filteredOpportunities.reduce((sum, opp) => sum + parseFloat(opp.value || '0'), 0);
+  
+  // Dynamic probability based on status
+  const getProbability = (status: string) => {
+    switch (status) {
+      case 'new': return 10;
+      case 'contacted': return 25;
+      case 'qualified': return 50;
+      case 'proposal': return 75;
+      case 'negotiation': return 90;
+      case 'won': return 100;
+      case 'lost': return 0;
+      default: return 0;
+    }
+  };
+
+  const weightedValue = filteredOpportunities.reduce((sum, opp) => sum + (parseFloat(opp.value || '0') * getProbability(opp.status) / 100), 0);
 
   return (
     <EnhancedLayout title="Opportunités">
@@ -151,52 +136,71 @@ export default function Opportunities() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredOpportunities.map((opp) => (
-                  <tr key={opp.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-foreground">{opp.name}</p>
-                        <p className="text-xs text-muted-foreground">{opp.contact}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-foreground">{opp.client}</td>
-                    <td className="px-6 py-4">
-                      <p className="font-semibold text-foreground">{(opp.value / 1000).toFixed(0)}k €</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full"
-                            style={{ width: `${opp.probability}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-foreground">{opp.probability}%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge className={stageColors[opp.stage as keyof typeof stageColors]}>
-                        {opp.stage}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(opp.expectedClose).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
-                ))}
+                ) : filteredOpportunities.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                      Aucune opportunité trouvée
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOpportunities.map((opp) => {
+                    const prob = getProbability(opp.status);
+                    const actions = [
+                      CommonContextActions.view(() => console.log('View', opp.id)),
+                      CommonContextActions.edit(() => console.log('Edit', opp.id)),
+                      CommonContextActions.delete(() => {
+                        if (confirm('Supprimer cette opportunité ?')) {
+                          deleteMutation.mutate({ id: opp.id });
+                        }
+                      }),
+                    ];
+
+                    return (
+                      <tr key={opp.id} className="hover:bg-muted/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-foreground">{opp.name}</p>
+                            <p className="text-xs text-muted-foreground">{opp.email || opp.phone || '-'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-foreground">{opp.company || '-'}</td>
+                        <td className="px-6 py-4">
+                          <p className="font-semibold text-foreground">{(parseFloat(opp.value || '0') / 1000).toFixed(0)}k €</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-gray-200 rounded-full h-2 w-24">
+                              <div
+                                className="bg-primary h-2 rounded-full"
+                                style={{ width: `${prob}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-foreground">{prob}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge className={stageColors[opp.status]}>
+                            {stageLabels[opp.status]}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          {opp.createdAt ? new Date(opp.createdAt).toLocaleDateString('fr-FR') : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end">
+                            <ContextMenu actions={actions} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

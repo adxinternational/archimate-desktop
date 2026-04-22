@@ -17,7 +17,8 @@ import {
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
-import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Loader2, Eye } from "lucide-react";
+import { ContextMenu, CommonContextActions } from "@/components/ContextMenu";
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6"];
 
@@ -308,6 +309,7 @@ export default function ProjectPerformance() {
                     <th className="text-right py-3 px-4 font-medium">Marge</th>
                     <th className="text-right py-3 px-4 font-medium">Marge %</th>
                     <th className="text-center py-3 px-4 font-medium">Statut</th>
+                    <th className="text-right py-3 px-4 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,6 +339,13 @@ export default function ProjectPerformance() {
                         <Badge variant={project.status === "active" ? "default" : "outline"}>
                           {project.status === "active" ? "Actif" : "Inactif"}
                         </Badge>
+                      </td>
+                      <td className="text-right py-3 px-4">
+                        <ContextMenu
+                          actions={[
+                            CommonContextActions.view(() => navigate(`/projects/${project.id}`)),
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}

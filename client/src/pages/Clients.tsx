@@ -6,8 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Users, Mail, Phone, MapPin, ArrowRight, Building2, User, Landmark } from "lucide-react";
+import { Plus, Search, Users, Mail, Phone, MapPin, ArrowRight, Building2, User, Landmark, Trash2 } from "lucide-react";
 import { CLIENT_TYPE_LABELS, getStatusColor, STATUS_LABELS } from "@/lib/constants";
+import { BulkActionsBar, BulkSelectableRow } from "@/components/BulkActions";
+import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { toast } from "sonner";
 
 const CLIENT_STATUS_COLORS: Record<string, string> = {
   prospect: "bg-yellow-100 text-yellow-700",
@@ -29,9 +32,49 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 export default function Clients() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "prospect" | "active" | "inactive">("all");
+  const utils = trpc.useUtils();
 
   const { data: clients, isLoading } = trpc.clients.list.useQuery();
   const { data: projects } = trpc.projects.list.useQuery();
+
+  const deleteMutation = trpc.clients.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Client supprimé");
+      utils.clients.list.invalidate();
+      deselectAll();
+    },
+    onError: (err) => {
+      toast.error(`Erreur: ${err.message}`);
+    },
+  });
+
+  const {
+    selected,
+    toggleSelect,
+    selectAll,
+    deselectAll,
+    isSelected,
+    getSelectedIds,
+    getSelectedCount,
+  } = useMultiSelect();
+
+  const handleBulkDelete = async (ids: string[]) => {
+    if (confirm(`Voulez-vous vraiment supprimer ${ids.length} client(s) ?`)) {
+      for (const id of ids) {
+        await deleteMutation.mutateAsync({ id: Number(id) });
+      }
+    }
+  };
+
+  const bulkActions = [
+    {
+      id: "delete",
+      label: "Supprimer",
+      icon: <Trash2 size={16} />,
+      variant: "destructive" as const,
+      onClick: handleBulkDelete,
+    },
+  ];
 
   const filtered = (clients ?? []).filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -55,10 +98,26 @@ export default function Clients() {
           <h1 className="text-2xl font-bold text-foreground">Clients</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{clients?.length ?? 0} client(s) enregistré(s)</p>
         </div>
-        <Link href="/clients/nouveau">
+        <Link href="/clients/create">
           <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />Nouveau client</Button>
         </Link>
       </div>
+
+      <BulkActionsBar
+        selectedCount={getSelectedCount()}
+        selectedIds={getSelectedIds()}
+        totalCount={filtered.length}
+        onSelectAll={(checked) => {
+          if (checked) {
+            selectAll(filtered.map(c => String(c.id)));
+          } else {
+            deselectAll();
+          }
+        }}
+        onClearSelection={deselectAll}
+        actions={bulkActions}
+        isLoading={deleteMutation.isPending}
+      />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -119,8 +178,13 @@ export default function Clients() {
             const activeProjects = clientProjects.filter(p => p.status === "active").length;
 
             return (
-              <Link key={client.id} href={`/clients/${client.id}`}>
-                <Card className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer group h-full">
+              <BulkSelectableRow
+                key={client.id}
+                id={String(client.id)}
+                selected={isSelected(String(client.id))}
+                onSelectionChange={() => toggleSelect(String(client.id))}
+              >
+                <Card className="border-0 shadow-sm hover:shadow-md transition-all group h-full">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -133,9 +197,9 @@ export default function Clients() {
                           </h3>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="outline" className="text-xs">{CLIENT_TYPE_LABELS[client.type]}</Badge>
-                          <Badge className={`text-xs ${CLIENT_STATUS_COLORS[client.status]}`}>
-                            {CLIENT_STATUS_LABELS[client.status]}
+                          <Badge variant="outline" className="text-xs">{CLIENT_TYPE_LABELS[client.type as keyof typeof CLIENT_TYPE_LABELS]}</Badge>
+                          <Badge className={`text-xs ${CLIENT_STATUS_COLORS[client.status as keyof typeof CLIENT_STATUS_COLORS]}`}>
+                            {CLIENT_STATUS_LABELS[client.status as keyof typeof CLIENT_STATUS_LABELS]}
                           </Badge>
                         </div>
                       </div>
@@ -167,11 +231,15 @@ export default function Clients() {
                         <span className="font-semibold text-foreground">{clientProjects.length}</span> projet(s)
                         {activeProjects > 0 && <span className="text-green-600 ml-1">({activeProjects} actif{activeProjects > 1 ? "s" : ""})</span>}
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Link href={`/clients/${client.id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                          Voir <ArrowRight className="w-3 h-3" />
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </BulkSelectableRow>
             );
           })}
         </div>

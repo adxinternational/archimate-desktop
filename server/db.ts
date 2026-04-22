@@ -23,6 +23,8 @@ import {
   invoices, InsertInvoice,
   expenses, InsertExpense,
   alerts, InsertAlert,
+  notes, InsertNote,
+  posts, InsertPost,
 } from "../drizzle/schema";
 
 // ── DB Connection ─────────────────────────────────────────────
@@ -661,6 +663,62 @@ export async function resolveAlert(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(alerts).set({ isResolved: true }).where(eq(alerts.id, id));
+}
+
+// ── Notes ─────────────────────────────────────────────────────
+
+export async function getAllNotes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(notes).orderBy(desc(notes.createdAt));
+}
+
+export async function createNote(data: InsertNote) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(notes).values(data);
+  const result = await db.select().from(notes).orderBy(desc(notes.createdAt)).limit(1);
+  return result[0];
+}
+
+export async function deleteNote(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(notes).where(eq(notes.id, id));
+}
+
+export async function toggleNoteFavorite(id: number, isFavorite: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(notes).set({ isFavorite }).where(eq(notes.id, id));
+}
+
+// ── Blog Posts ───────────────────────────────────────────────
+
+export async function getAllPosts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(posts).orderBy(desc(posts.publishedAt || posts.createdAt));
+}
+
+export async function createPost(data: InsertPost) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(posts).values(data);
+  const result = await db.select().from(posts).orderBy(desc(posts.createdAt)).limit(1);
+  return result[0];
+}
+
+export async function updatePost(id: number, data: Partial<InsertPost>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(posts).set({ ...data, updatedAt: new Date() }).where(eq(posts.id, id));
+}
+
+export async function deletePost(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(posts).where(eq(posts.id, id));
 }
 
 // ── Dashboard KPIs ────────────────────────────────────────────

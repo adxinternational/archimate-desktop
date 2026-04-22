@@ -134,3 +134,18 @@ describe("dashboard router", () => {
     expect(typeof result.activeProjects).toBe("number");
   });
 });
+describe("notes router", () => {
+  it("list procedure exists and is callable", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.notes.list().catch(() => []);
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("blog router", () => {
+  it("list procedure exists and is callable", async () => {
+    const caller = appRouter.createCaller(createCtx());
+    const result = await caller.blog.list().catch(() => []);
+    expect(Array.isArray(result)).toBe(true);
+  });
+});

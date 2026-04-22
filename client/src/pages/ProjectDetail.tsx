@@ -1,21 +1,19 @@
-import { useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   ArrowLeft, Edit2, Trash2, Plus, FileText, MessageSquare,
   CheckSquare, MapPin, Euro, Calendar, User, ChevronRight,
-  CheckCircle2, Clock, AlertCircle, Circle, Upload, Download
+  CheckCircle2, Clock, AlertCircle, Circle, Upload, Download,
+  Save, X, Loader2
 } from "lucide-react";
 import {
   formatCurrency, formatDate, getPhaseColor, getStatusColor,
@@ -23,6 +21,21 @@ import {
   PROCEDURE_STATUS_LABELS
 } from "@/lib/constants";
 import { Progress } from "@/components/ui/progress";
+
+const projectSchema = z.object({
+  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  clientId: z.string().optional(),
+  type: z.string().optional(),
+  description: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  currentPhase: z.enum(["esq", "aps", "apd", "pc", "dce", "chantier", "doe"]),
+  budgetEstimated: z.string().optional(),
+  startDate: z.string().optional(),
+  status: z.enum(["active", "on_hold", "completed", "cancelled"]),
+});
+
+type ProjectFormValues = z.infer<typeof projectSchema>;
 
 function PhaseTimeline({ phases, currentPhase }: { phases: any[]; currentPhase: string }) {
   const utils = trpc.useUtils();
@@ -330,19 +343,64 @@ export default function ProjectDetail() {
   const [, navigate] = useLocation();
   const projectId = parseInt((params as any)?.id ?? "0");
   const utils = trpc.useUtils();
+  const [editing, setEditing] = useState(false);
 
   const { data: project, isLoading } = trpc.projects.byId.useQuery({ id: projectId });
   const { data: phases } = trpc.projects.phases.useQuery({ projectId });
   const { data: clients } = trpc.clients.list.useQuery();
   const { data: tasks } = trpc.tasks.byProject.useQuery({ projectId });
 
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectSchema),
+    defaultValues: {
+      name: "",
+      clientId: "",
+      type: "",
+      description: "",
+      address: "",
+      city: "",
+      currentPhase: "esq",
+      budgetEstimated: "",
+      startDate: "",
+      status: "active",
+    },
+  });
+
   const deleteMutation = trpc.projects.delete.useMutation({
     onSuccess: () => { utils.projects.list.invalidate(); navigate("/projets"); toast.success("Projet supprimé"); },
   });
 
   const updateMutation = trpc.projects.update.useMutation({
-    onSuccess: () => { utils.projects.byId.invalidate(); toast.success("Projet mis à jour"); },
+    onSuccess: () => { utils.projects.byId.invalidate(); setEditing(false); toast.success("Projet mis à jour"); },
   });
+
+  const startEditing = () => {
+    if (project) {
+      form.reset({
+        name: project.name,
+        clientId: project.clientId ? String(project.clientId) : "",
+        type: project.type ?? "",
+        description: project.description ?? "",
+        address: project.address ?? "",
+        city: project.city ?? "",
+        currentPhase: (project.currentPhase as any) || "esq",
+        budgetEstimated: project.budgetEstimated ? String(project.budgetEstimated) : "",
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : "",
+        status: (project.status as any) || "active",
+      });
+      setEditing(true);
+    }
+  };
+
+  const onSave = (values: ProjectFormValues) => {
+    updateMutation.mutate({
+      id: projectId,
+      ...values,
+      clientId: values.clientId ? parseInt(values.clientId) : undefined,
+      budgetEstimated: values.budgetEstimated ? parseFloat(values.budgetEstimated) : undefined,
+      startDate: values.startDate ? new Date(values.startDate) : undefined,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -391,25 +449,31 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Select value={project.status} onValueChange={v => updateMutation.mutate({ id: projectId, status: v as any })}>
-            <SelectTrigger className="w-36 h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">En cours</SelectItem>
-              <SelectItem value="on_hold">En attente</SelectItem>
-              <SelectItem value="completed">Terminé</SelectItem>
-              <SelectItem value="cancelled">Annulé</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-            onClick={() => { if (confirm("Supprimer ce projet ?")) deleteMutation.mutate({ id: projectId }); }}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {!editing ? (
+            <>
+              <Button variant="outline" size="sm" className="gap-2 h-8" onClick={startEditing}>
+                <Edit2 className="w-3.5 h-3.5" />Modifier
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                onClick={() => { if (confirm("Supprimer ce projet ?")) deleteMutation.mutate({ id: projectId }); }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" className="gap-2 h-8" onClick={form.handleSubmit(onSave)} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Enregistrer
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setEditing(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -443,40 +507,138 @@ export default function ProjectDetail() {
             <Card className="border-0 shadow-sm">
               <CardHeader className="pb-3"><CardTitle className="text-sm">Informations</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {project.type && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Type</span>
-                    <span className="font-medium">{project.type}</span>
-                  </div>
+                {editing ? (
+                  <Form {...form}>
+                    <form className="space-y-3">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="text-xs">Nom du projet</FormLabel>
+                            <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem className="space-y-1">
+                              <FormLabel className="text-xs">Statut</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="active">En cours</SelectItem>
+                                  <SelectItem value="on_hold">En attente</SelectItem>
+                                  <SelectItem value="completed">Terminé</SelectItem>
+                                  <SelectItem value="cancelled">Annulé</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="currentPhase"
+                          render={({ field }) => (
+                            <FormItem className="space-y-1">
+                              <FormLabel className="text-xs">Phase</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {Object.entries(PHASE_LABELS).map(([k, v]) => (
+                                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="text-xs">Adresse</FormLabel>
+                            <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="budgetEstimated"
+                          render={({ field }) => (
+                            <FormItem className="space-y-1">
+                              <FormLabel className="text-xs">Budget estimé (€)</FormLabel>
+                              <FormControl><Input {...field} type="number" className="h-8 text-sm" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="startDate"
+                          render={({ field }) => (
+                            <FormItem className="space-y-1">
+                              <FormLabel className="text-xs">Date début</FormLabel>
+                              <FormControl><Input {...field} type="date" className="h-8 text-sm" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </form>
+                  </Form>
+                ) : (
+                  <>
+                    {project.type && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Type</span>
+                        <span className="font-medium">{project.type}</span>
+                      </div>
+                    )}
+                    {project.address && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Adresse</span>
+                        <span className="font-medium text-right">{project.address}</span>
+                      </div>
+                    )}
+                    {project.startDate && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Démarrage</span>
+                        <span className="font-medium">{formatDate(project.startDate)}</span>
+                      </div>
+                    )}
+                    {project.endDate && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Fin prévue</span>
+                        <span className="font-medium">{formatDate(project.endDate)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Budget estimé</span>
+                      <span className="font-semibold text-primary">{formatCurrency(project.budgetEstimated ?? 0)}</span>
+                    </div>
+                    {project.budgetActual ? (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Budget réel</span>
+                        <span className="font-semibold">{formatCurrency(project.budgetActual)}</span>
+                      </div>
+                    ) : null}
+                  </>
                 )}
-                {project.address && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Adresse</span>
-                    <span className="font-medium text-right">{project.address}</span>
-                  </div>
-                )}
-                {project.startDate && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Démarrage</span>
-                    <span className="font-medium">{formatDate(project.startDate)}</span>
-                  </div>
-                )}
-                {project.endDate && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Fin prévue</span>
-                    <span className="font-medium">{formatDate(project.endDate)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Budget estimé</span>
-                  <span className="font-semibold text-primary">{formatCurrency(project.budgetEstimated ?? 0)}</span>
-                </div>
-                {project.budgetActual ? (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Budget réel</span>
-                    <span className="font-semibold">{formatCurrency(project.budgetActual)}</span>
-                  </div>
-                ) : null}
               </CardContent>
             </Card>
 
@@ -505,14 +667,29 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
 
-            {project.description && (
+            {project.description || editing ? (
               <Card className="border-0 shadow-sm md:col-span-2">
                 <CardHeader className="pb-3"><CardTitle className="text-sm">Description</CardTitle></CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
+                  {editing ? (
+                    <Form {...form}>
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl><Textarea {...field} rows={4} className="text-sm resize-none" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </Form>
+                  ) : (
+                    <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
+                  )}
                 </CardContent>
               </Card>
-            )}
+            ) : null}
           </div>
         </TabsContent>
 

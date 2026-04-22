@@ -1,24 +1,48 @@
-import { useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
-import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   ArrowLeft, Trash2, Plus, BookOpen, Users, AlertTriangle,
-  MapPin, Calendar, Cloud, HardHat, CheckCircle2, Clock, AlertCircle
+  MapPin, Calendar, Cloud, HardHat, CheckCircle2, Clock, AlertCircle,
+  Save, X, Loader2
 } from "lucide-react";
 import { formatDate, getSiteStatusColor, SITE_STATUS_LABELS, getIncidentSeverityColor, INCIDENT_SEVERITY_LABELS } from "@/lib/constants";
+
+const journalSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
+  weather: z.string().optional(),
+  workDescription: z.string().min(3, "La description est requise"),
+  workers: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const meetingSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
+  title: z.string().min(3, "Le titre est requis"),
+  attendees: z.string().optional(),
+  summary: z.string().optional(),
+  decisions: z.string().optional(),
+  nextActions: z.string().optional(),
+});
+
+const incidentSchema = z.object({
+  title: z.string().min(3, "Le titre est requis"),
+  description: z.string().optional(),
+  severity: z.enum(["low", "medium", "high", "critical"]),
+  date: z.string().min(1, "La date est requise"),
+});
+
+type JournalFormValues = z.infer<typeof journalSchema>;
+type MeetingFormValues = z.infer<typeof meetingSchema>;
+type IncidentFormValues = z.infer<typeof incidentSchema>;
 
 export default function SiteDetail() {
   const [, params] = useRoute("/chantier/:id");
@@ -32,25 +56,24 @@ export default function SiteDetail() {
   const { data: incidents } = trpc.sites.incidents.useQuery({ siteId });
   const { data: projects } = trpc.projects.list.useQuery();
 
-  // Journal form
+  // Forms
   const [journalOpen, setJournalOpen] = useState(false);
-  const [journalForm, setJournalForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    weather: "", workDescription: "", workers: "", notes: "",
-  });
-
-  // Meeting form
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [meetingForm, setMeetingForm] = useState({
-    date: new Date().toISOString().split("T")[0],
-    title: "", attendees: "", summary: "", decisions: "", nextActions: "",
+  const [incidentOpen, setIncidentOpen] = useState(false);
+
+  const journalForm = useForm<JournalFormValues>({
+    resolver: zodResolver(journalSchema),
+    defaultValues: { date: new Date().toISOString().split("T")[0], weather: "", workDescription: "", workers: "", notes: "" }
   });
 
-  // Incident form
-  const [incidentOpen, setIncidentOpen] = useState(false);
-  const [incidentForm, setIncidentForm] = useState({
-    title: "", description: "", severity: "medium" as const,
-    date: new Date().toISOString().split("T")[0],
+  const meetingForm = useForm<MeetingFormValues>({
+    resolver: zodResolver(meetingSchema),
+    defaultValues: { date: new Date().toISOString().split("T")[0], title: "", attendees: "", summary: "", decisions: "", nextActions: "" }
+  });
+
+  const incidentForm = useForm<IncidentFormValues>({
+    resolver: zodResolver(incidentSchema),
+    defaultValues: { title: "", description: "", severity: "medium", date: new Date().toISOString().split("T")[0] }
   });
 
   const updateSite = trpc.sites.update.useMutation({
@@ -62,7 +85,12 @@ export default function SiteDetail() {
   });
 
   const addJournal = trpc.sites.addJournalEntry.useMutation({
-    onSuccess: () => { utils.sites.journal.invalidate(); setJournalOpen(false); toast.success("Entrée ajoutée"); },
+    onSuccess: () => {
+      utils.sites.journal.invalidate();
+      setJournalOpen(false);
+      journalForm.reset();
+      toast.success("Entrée ajoutée");
+    },
   });
 
   const deleteJournal = trpc.sites.deleteJournalEntry.useMutation({
@@ -70,7 +98,12 @@ export default function SiteDetail() {
   });
 
   const addMeeting = trpc.sites.addMeeting.useMutation({
-    onSuccess: () => { utils.sites.meetings.invalidate(); setMeetingOpen(false); toast.success("Réunion ajoutée"); },
+    onSuccess: () => {
+      utils.sites.meetings.invalidate();
+      setMeetingOpen(false);
+      meetingForm.reset();
+      toast.success("Réunion ajoutée");
+    },
   });
 
   const deleteMeeting = trpc.sites.deleteMeeting.useMutation({
@@ -78,7 +111,12 @@ export default function SiteDetail() {
   });
 
   const addIncident = trpc.sites.addIncident.useMutation({
-    onSuccess: () => { utils.sites.incidents.invalidate(); setIncidentOpen(false); toast.success("Incident signalé"); },
+    onSuccess: () => {
+      utils.sites.incidents.invalidate();
+      setIncidentOpen(false);
+      incidentForm.reset();
+      toast.success("Incident signalé");
+    },
   });
 
   const updateIncident = trpc.sites.updateIncident.useMutation({
@@ -201,60 +239,92 @@ export default function SiteDetail() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader><DialogTitle>Nouvelle entrée de journal</DialogTitle></DialogHeader>
-                    <div className="space-y-4 pt-2">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label>Date</Label>
-                          <Input type="date" value={journalForm.date} onChange={e => setJournalForm(f => ({ ...f, date: e.target.value }))} />
+                    <Form {...journalForm}>
+                      <form onSubmit={journalForm.handleSubmit(v => addJournal.mutate({
+                        siteId,
+                        date: new Date(v.date),
+                        weather: v.weather || undefined,
+                        workDescription: v.workDescription,
+                        workers: v.workers ? parseInt(v.workers) : undefined,
+                        notes: v.notes || undefined,
+                      }))} className="space-y-4 pt-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={journalForm.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Date</FormLabel>
+                                <FormControl><Input type="date" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={journalForm.control}
+                            name="weather"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Météo</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Météo" /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Ensoleillé">☀️ Ensoleillé</SelectItem>
+                                    <SelectItem value="Nuageux">⛅ Nuageux</SelectItem>
+                                    <SelectItem value="Pluvieux">🌧️ Pluvieux</SelectItem>
+                                    <SelectItem value="Venteux">💨 Venteux</SelectItem>
+                                    <SelectItem value="Neige">❄️ Neige</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label>Météo</Label>
-                          <Select value={journalForm.weather} onValueChange={v => setJournalForm(f => ({ ...f, weather: v }))}>
-                            <SelectTrigger><SelectValue placeholder="Météo" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Ensoleillé">☀️ Ensoleillé</SelectItem>
-                              <SelectItem value="Nuageux">⛅ Nuageux</SelectItem>
-                              <SelectItem value="Pluvieux">🌧️ Pluvieux</SelectItem>
-                              <SelectItem value="Venteux">💨 Venteux</SelectItem>
-                              <SelectItem value="Neige">❄️ Neige</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Travaux effectués <span className="text-destructive">*</span></Label>
-                        <Textarea
-                          value={journalForm.workDescription}
-                          onChange={e => setJournalForm(f => ({ ...f, workDescription: e.target.value }))}
-                          placeholder="Description des travaux effectués..."
-                          rows={3}
+                        <FormField
+                          control={journalForm.control}
+                          name="workDescription"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Travaux effectués <span className="text-destructive">*</span></FormLabel>
+                              <FormControl><Textarea {...field} placeholder="Description des travaux effectués..." rows={3} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label>Nombre d'ouvriers</Label>
-                          <Input type="number" value={journalForm.workers} onChange={e => setJournalForm(f => ({ ...f, workers: e.target.value }))} placeholder="0" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={journalForm.control}
+                            name="workers"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nombre d'ouvriers</FormLabel>
+                                <FormControl><Input type="number" {...field} placeholder="0" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Notes</Label>
-                        <Textarea value={journalForm.notes} onChange={e => setJournalForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setJournalOpen(false)}>Annuler</Button>
-                        <Button
-                          onClick={() => addJournal.mutate({
-                            siteId,
-                            date: new Date(journalForm.date),
-                            weather: journalForm.weather || undefined,
-                            workDescription: journalForm.workDescription,
-                            workers: journalForm.workers ? parseInt(journalForm.workers) : undefined,
-                            notes: journalForm.notes || undefined,
-                          })}
-                          disabled={!journalForm.workDescription || addJournal.isPending}
-                        >Ajouter</Button>
-                      </div>
-                    </div>
+                        <FormField
+                          control={journalForm.control}
+                          name="notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Notes</FormLabel>
+                              <FormControl><Textarea {...field} rows={2} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" type="button" onClick={() => setJournalOpen(false)}>Annuler</Button>
+                          <Button type="submit" disabled={addJournal.isPending}>
+                            {addJournal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Ajouter
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -315,49 +385,93 @@ export default function SiteDetail() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader><DialogTitle>Compte rendu de réunion</DialogTitle></DialogHeader>
-                    <div className="space-y-4 pt-2">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label>Date</Label>
-                          <Input type="date" value={meetingForm.date} onChange={e => setMeetingForm(f => ({ ...f, date: e.target.value }))} />
+                    <Form {...meetingForm}>
+                      <form onSubmit={meetingForm.handleSubmit(v => addMeeting.mutate({
+                        siteId,
+                        date: new Date(v.date),
+                        title: v.title,
+                        attendees: v.attendees ? v.attendees.split(",").map(s => s.trim()) : [],
+                        summary: v.summary || undefined,
+                        decisions: v.decisions ? v.decisions.split("\n").filter(Boolean) : [],
+                        nextActions: v.nextActions ? v.nextActions.split("\n").filter(Boolean).map(a => ({ action: a, responsible: "", dueDate: undefined })) : [],
+                      }))} className="space-y-4 pt-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={meetingForm.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Date</FormLabel>
+                                <FormControl><Input type="date" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={meetingForm.control}
+                            name="title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Titre <span className="text-destructive">*</span></FormLabel>
+                                <FormControl><Input {...field} placeholder="Réunion de chantier" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label>Titre <span className="text-destructive">*</span></Label>
-                          <Input value={meetingForm.title} onChange={e => setMeetingForm(f => ({ ...f, title: e.target.value }))} placeholder="Réunion de chantier" />
+                        <FormField
+                          control={meetingForm.control}
+                          name="attendees"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Participants (séparés par virgule)</FormLabel>
+                              <FormControl><Input {...field} placeholder="Jean Dupont, Marie Martin..." /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={meetingForm.control}
+                          name="summary"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Résumé</FormLabel>
+                              <FormControl><Textarea {...field} rows={3} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={meetingForm.control}
+                          name="decisions"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Décisions prises (une par ligne)</FormLabel>
+                              <FormControl><Textarea {...field} rows={2} placeholder="Décision 1&#10;Décision 2" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={meetingForm.control}
+                          name="nextActions"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Actions suivantes (une par ligne)</FormLabel>
+                              <FormControl><Textarea {...field} rows={2} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" type="button" onClick={() => setMeetingOpen(false)}>Annuler</Button>
+                          <Button type="submit" disabled={addMeeting.isPending}>
+                            {addMeeting.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Ajouter
+                          </Button>
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Participants (séparés par virgule)</Label>
-                        <Input value={meetingForm.attendees} onChange={e => setMeetingForm(f => ({ ...f, attendees: e.target.value }))} placeholder="Jean Dupont, Marie Martin..." />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Résumé</Label>
-                        <Textarea value={meetingForm.summary} onChange={e => setMeetingForm(f => ({ ...f, summary: e.target.value }))} rows={3} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Décisions prises (une par ligne)</Label>
-                        <Textarea value={meetingForm.decisions} onChange={e => setMeetingForm(f => ({ ...f, decisions: e.target.value }))} rows={2} placeholder="Décision 1&#10;Décision 2" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Actions suivantes (une par ligne)</Label>
-                        <Textarea value={meetingForm.nextActions} onChange={e => setMeetingForm(f => ({ ...f, nextActions: e.target.value }))} rows={2} />
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setMeetingOpen(false)}>Annuler</Button>
-                        <Button
-                          onClick={() => addMeeting.mutate({
-                            siteId,
-                            date: new Date(meetingForm.date),
-                            title: meetingForm.title,
-                            attendees: meetingForm.attendees ? meetingForm.attendees.split(",").map(s => s.trim()) : [],
-                            summary: meetingForm.summary || undefined,
-                            decisions: meetingForm.decisions ? meetingForm.decisions.split("\n").filter(Boolean) : [],
-                            nextActions: meetingForm.nextActions ? meetingForm.nextActions.split("\n").filter(Boolean).map(a => ({ action: a, responsible: "", dueDate: undefined })) : [],
-                          })}
-                          disabled={!meetingForm.title || addMeeting.isPending}
-                        >Ajouter</Button>
-                      </div>
-                    </div>
+                      </form>
+                    </Form>
                   </DialogContent>
                 </Dialog>
               </div>
@@ -437,47 +551,77 @@ export default function SiteDetail() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader><DialogTitle>Signaler un incident</DialogTitle></DialogHeader>
-                    <div className="space-y-4 pt-2">
-                      <div className="space-y-1.5">
-                        <Label>Titre <span className="text-destructive">*</span></Label>
-                        <Input value={incidentForm.title} onChange={e => setIncidentForm(f => ({ ...f, title: e.target.value }))} placeholder="Description courte de l'incident" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label>Gravité</Label>
-                          <Select value={incidentForm.severity} onValueChange={v => setIncidentForm(f => ({ ...f, severity: v as any }))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">Faible</SelectItem>
-                              <SelectItem value="medium">Moyen</SelectItem>
-                              <SelectItem value="high">Élevé</SelectItem>
-                              <SelectItem value="critical">Critique</SelectItem>
-                            </SelectContent>
-                          </Select>
+                    <Form {...incidentForm}>
+                      <form onSubmit={incidentForm.handleSubmit(v => addIncident.mutate({
+                        siteId,
+                        title: v.title,
+                        description: v.description || undefined,
+                        severity: v.severity,
+                        date: new Date(v.date),
+                      }))} className="space-y-4 pt-2">
+                        <FormField
+                          control={incidentForm.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Titre <span className="text-destructive">*</span></FormLabel>
+                              <FormControl><Input {...field} placeholder="Description courte de l'incident" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={incidentForm.control}
+                            name="severity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Gravité</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="low">Faible</SelectItem>
+                                    <SelectItem value="medium">Moyen</SelectItem>
+                                    <SelectItem value="high">Élevé</SelectItem>
+                                    <SelectItem value="critical">Critique</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={incidentForm.control}
+                            name="date"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Date</FormLabel>
+                                <FormControl><Input type="date" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label>Date</Label>
-                          <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm(f => ({ ...f, date: e.target.value }))} />
+                        <FormField
+                          control={incidentForm.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl><Textarea {...field} rows={3} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="outline" type="button" onClick={() => setIncidentOpen(false)}>Annuler</Button>
+                          <Button type="submit" variant="destructive" disabled={addIncident.isPending}>
+                            {addIncident.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Signaler
+                          </Button>
                         </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Description</Label>
-                        <Textarea value={incidentForm.description} onChange={e => setIncidentForm(f => ({ ...f, description: e.target.value }))} rows={3} />
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button variant="outline" onClick={() => setIncidentOpen(false)}>Annuler</Button>
-                        <Button
-                          onClick={() => addIncident.mutate({
-                            siteId,
-                            title: incidentForm.title,
-                            description: incidentForm.description || undefined,
-                            severity: incidentForm.severity,
-                            date: new Date(incidentForm.date),
-                          })}
-                          disabled={!incidentForm.title || addIncident.isPending}
-                        >Signaler</Button>
-                      </div>
-                    </div>
+                      </form>
+                    </Form>
                   </DialogContent>
                 </Dialog>
               </div>

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,56 +8,69 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { toast } from "sonner";
-import { ArrowLeft, FolderOpen } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, FolderOpen, Loader2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { PHASE_LABELS } from "@/lib/constants";
 
-const PROJECT_TYPES = [
-  "Logement individuel", "Logement collectif", "Bureaux", "Commerce",
-  "Équipement public", "Réhabilitation", "Urbanisme", "Autre"
-];
+const projectSchema = z.object({
+  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  clientId: z.string().optional(),
+  type: z.string().optional(),
+  description: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  currentPhase: z.enum(["esq", "aps", "apd", "pc", "dce", "chantier", "doe"]),
+  budgetEstimated: z.string().optional(),
+  startDate: z.string().optional(),
+});
+
+type ProjectFormValues = z.infer<typeof projectSchema>;
 
 export default function ProjectCreate() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
-  const [form, setForm] = useState({
-    name: "",
-    clientId: "",
-    type: "",
-    description: "",
-    address: "",
-    city: "",
-    currentPhase: "esq" as const,
-    budgetEstimated: "",
-    startDate: "",
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectSchema),
+    defaultValues: {
+      name: "",
+      clientId: "",
+      type: "",
+      description: "",
+      address: "",
+      city: "",
+      currentPhase: "esq",
+      budgetEstimated: "",
+      startDate: "",
+    },
   });
 
   const { data: clients } = trpc.clients.list.useQuery();
 
   const createMutation = trpc.projects.create.useMutation({
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       utils.projects.list.invalidate();
       toast.success("Projet créé avec succès");
-      navigate(`/projects/${(data as any)?.id ?? ""}`);
+      navigate(`/projects/${data.id}`);
     },
     onError: (err) => toast.error("Erreur : " + err.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim()) { toast.error("Le nom du projet est requis"); return; }
+  const onSubmit = (values: ProjectFormValues) => {
     createMutation.mutate({
-      name: form.name,
-      clientId: form.clientId ? parseInt(form.clientId) : undefined,
-      type: form.type || undefined,
-      description: form.description || undefined,
-      address: form.address || undefined,
-      city: form.city || undefined,
-      currentPhase: form.currentPhase,
-      budgetEstimated: form.budgetEstimated ? parseFloat(form.budgetEstimated) : undefined,
-      startDate: form.startDate ? new Date(form.startDate) : undefined,
+      ...values,
+      clientId: values.clientId ? parseInt(values.clientId) : undefined,
+      budgetEstimated: values.budgetEstimated ? parseFloat(values.budgetEstimated) : undefined,
+      startDate: values.startDate ? new Date(values.startDate) : undefined,
     });
   };
 
@@ -74,137 +88,188 @@ export default function ProjectCreate() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-primary" />
-              Informations générales
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Nom du projet <span className="text-destructive">*</span></Label>
-              <Input
-                id="name"
-                placeholder="Ex: Villa Dupont - Réhabilitation"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="bg-background"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-primary" />
+                Informations générales
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom du projet <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Villa Dupont - Réhabilitation" {...field} className="bg-background" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="client">Client</Label>
-                <Select value={form.clientId} onValueChange={v => setForm(f => ({ ...f, clientId: v }))}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Sélectionner un client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients?.map(c => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="type">Type de projet</Label>
-                <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Description du projet..."
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="bg-background resize-none"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="address">Adresse</Label>
-                <Input
-                  id="address"
-                  placeholder="Adresse du projet"
-                  value={form.address}
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  className="bg-background"
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Sélectionner un client" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clients?.map(c => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type de projet</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PROJECT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="city">Ville</Label>
-                <Input
-                  id="city"
-                  placeholder="Ville"
-                  value={form.city}
-                  onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                  className="bg-background"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="phase">Phase initiale</Label>
-                <Select value={form.currentPhase} onValueChange={v => setForm(f => ({ ...f, currentPhase: v as any }))}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PHASE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="budget">Budget estimé (€)</Label>
-                <Input
-                  id="budget"
-                  type="number"
-                  placeholder="0"
-                  value={form.budgetEstimated}
-                  onChange={e => setForm(f => ({ ...f, budgetEstimated: e.target.value }))}
-                  className="bg-background"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="startDate">Date de démarrage</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={form.startDate}
-                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="bg-background"
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Description du projet..."
+                        className="bg-background resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </CardContent>
-        </Card>
 
-        <div className="flex gap-3 mt-6 justify-end">
-          <Link href="/projects">
-            <Button type="button" variant="outline">Annuler</Button>
-          </Link>
-          <Button type="submit" disabled={createMutation.isPending} className="gap-2">
-            {createMutation.isPending ? "Création..." : "Créer le projet"}
-          </Button>
-        </div>
-      </form>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adresse</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Adresse du projet" {...field} className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ville</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ville" {...field} className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="currentPhase"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phase initiale</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-background">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.entries(PHASE_LABELS).map(([k, v]) => (
+                            <SelectItem key={k} value={k}>{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="budgetEstimated"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Budget estimé (€)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} className="bg-background" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date de démarrage</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} className="bg-background" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3 mt-6 justify-end">
+            <Link href="/projects">
+              <Button type="button" variant="outline">Annuler</Button>
+            </Link>
+            <Button type="submit" disabled={createMutation.isPending} className="gap-2">
+              {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {createMutation.isPending ? "Création..." : "Créer le projet"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }

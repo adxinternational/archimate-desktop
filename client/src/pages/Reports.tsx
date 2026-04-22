@@ -10,8 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, Download, Eye, Trash2, Plus, Filter } from 'lucide-react';
+import { FileText, Download, Eye, Trash2, Plus, Filter, FileDown, Table } from 'lucide-react';
 import { FinancialChart } from '@/components/FinancialChart';
+import { exportToCSV, exportToExcel } from '@/lib/exportUtils';
+import { ContextMenu, CommonContextActions } from '@/components/ContextMenu';
+import { toast } from 'sonner';
 
 const mockReports = [
   {
@@ -73,10 +76,20 @@ export default function Reports() {
             <h2 className="text-2xl font-bold text-foreground">Rapports</h2>
             <p className="text-sm text-muted-foreground mt-1">Gérez et téléchargez vos rapports</p>
           </div>
-          <Button className="gap-2">
-            <Plus size={18} />
-            Créer un rapport
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => exportToCSV(filteredReports, 'rapports')}>
+              <FileDown size={18} />
+              Exporter CSV
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => exportToExcel(filteredReports, 'rapports')}>
+              <Table size={18} />
+              Exporter Excel
+            </Button>
+            <Button className="gap-2">
+              <Plus size={18} />
+              Créer un rapport
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -123,43 +136,48 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredReports.map((report) => (
-                  <tr key={report.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <FileText className="text-muted-foreground" size={18} />
-                        <span className="font-medium text-foreground">{report.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        {report.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(report.date).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{report.size}</td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        {report.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Download size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredReports.map((report) => {
+                  const actions = [
+                    CommonContextActions.view(() => console.log('View', report.id)),
+                    {
+                      id: 'download',
+                      label: 'Télécharger',
+                      icon: <Download size={16} />,
+                      onClick: () => exportToCSV([report], `rapport_${report.id}`),
+                    },
+                    CommonContextActions.delete(() => toast.success('Rapport supprimé')),
+                  ];
+
+                  return (
+                    <tr key={report.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <FileText className="text-muted-foreground" size={18} />
+                          <span className="font-medium text-foreground">{report.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                          {report.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        {new Date(report.date).toLocaleDateString('fr-FR')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{report.size}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          {report.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end">
+                          <ContextMenu actions={actions} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

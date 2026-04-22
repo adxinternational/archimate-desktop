@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import {
   FolderOpen, Users, CheckSquare, AlertCircle,
   TrendingUp, Clock, DollarSign, Hammer, ArrowRight, Loader2,
+  StickyNote, Newspaper,
 } from "lucide-react";
 
 const PHASE_LABELS: Record<string, string> = {
@@ -35,6 +36,8 @@ export default function EnhancedDashboard() {
   const { data: invoices = [] } = trpc.invoices.list.useQuery();
   const { data: expenses = [] } = trpc.expenses.list.useQuery();
   const { data: sites = [] } = trpc.sites.list.useQuery();
+  const { data: notes = [] } = trpc.notes.list.useQuery();
+  const { data: blogPosts = [] } = trpc.blog.list.useQuery();
 
   const isLoading = loadingProj || loadingClients || loadingTasks;
 
@@ -199,23 +202,6 @@ export default function EnhancedDashboard() {
         }
         </div>
         
-        {/* Graphique financier ancien */}
-        {chartData.some(d => d.revenue > 0 || d.costs > 0) ? (
-          <div style={{ display: "none" }}>
-            <FinancialChart
-              data={chartData}
-              title="Synthèse financière — 6 derniers mois"
-              type="area"
-              height={280}
-            />
-          </div>
-        ) : (
-          <Card className="p-8 text-center">
-            <TrendingUp size={32} className="mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-sm text-muted-foreground">Le graphique financier apparaîtra dès que vous aurez des factures et dépenses.</p>
-          </Card>
-        )}
-
         {/* Projets récents + Tâches urgentes */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -326,8 +312,66 @@ export default function EnhancedDashboard() {
           </Card>
         </div>
 
+        {/* Notes & Blog */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <StickyNote size={18} className="text-primary" /> Notes récentes
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate("/notes")}>
+                  Voir tout <ArrowRight size={12} className="ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {notes.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Aucune note</p>
+              ) : (
+                notes.slice(0, 3).map(n => (
+                  <div key={n.id} className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm font-medium">{n.title}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{n.content}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Newspaper size={18} className="text-primary" /> Dernières actualités
+                </CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate("/blog")}>
+                  Gérer <ArrowRight size={12} className="ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {blogPosts.filter(p => p.status === 'published').length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Aucun article publié</p>
+              ) : (
+                blogPosts.filter(p => p.status === 'published').slice(0, 3).map(p => (
+                  <div key={p.id} className="flex items-center justify-between">
+                    <p className="text-sm font-medium truncate">{p.title}</p>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {new Date(p.createdAt).toLocaleDateString()}
+                    </Badge>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Actions rapides */}
         <div className="flex flex-wrap gap-3 justify-end">
+          <Button variant="outline" className="gap-2" onClick={() => navigate("/notes")}>
+            <StickyNote size={16} /> Nouvelle note
+          </Button>
           <Button variant="outline" onClick={() => navigate("/clients/create")}>
             Nouveau client
           </Button>

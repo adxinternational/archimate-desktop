@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { ContextMenu, CommonContextActions } from "@/components/ContextMenu";
 import {
   Plus, Users, CheckSquare, Clock, Euro, Trash2, Edit2,
   TrendingUp, TrendingDown, BarChart2, Mail, Phone,
@@ -499,10 +500,14 @@ function FinancesTab() {
                           <SelectItem value="cancelled">Annulée</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteInvoice.mutate({ id: invoice.id })}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <ContextMenu actions={[
+                        CommonContextActions.view(() => {}),
+                        CommonContextActions.delete(() => {
+                          if (confirm(`Supprimer la facture ${invoice.number} ?`)) {
+                            deleteInvoice.mutate({ id: invoice.id });
+                          }
+                        }),
+                      ]} />
                     </div>
                   </div>
                 );
@@ -595,10 +600,13 @@ function FinancesTab() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-red-600">-{formatCurrency(parseFloat(expense.amount as any) ?? 0)}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteExpense.mutate({ id: expense.id })}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <ContextMenu actions={[
+                        CommonContextActions.delete(() => {
+                          if (confirm(`Supprimer la dépense "${expense.description}" ?`)) {
+                            deleteExpense.mutate({ id: expense.id });
+                          }
+                        }),
+                      ]} />
                     </div>
                   </div>
                 );
