@@ -3,7 +3,7 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/[...all].ts" },
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }
