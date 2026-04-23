@@ -63,12 +63,14 @@ if (process.env.NODE_ENV === "development") {
     });
   });
 } else {
-  serveStatic(app);
-  if (process.env.NODE_ENV === "production" && process.argv[1].endsWith("dist/index.js")) {
-    const server = http.createServer(app);
-    server.listen(3000, "0.0.0.0", () => {
-      console.log("Production server listening on port 3000");
-    });
+  if (!process.env.VERCEL) {
+    serveStatic(app);
+    if (process.env.NODE_ENV === "production" && (process.argv[1].endsWith("dist/index.js") || process.argv[1].includes("index.js"))) {
+      const server = http.createServer(app);
+      server.listen(3000, "0.0.0.0", () => {
+        console.log("Production server listening on port 3000");
+      });
+    }
   }
 }
 
