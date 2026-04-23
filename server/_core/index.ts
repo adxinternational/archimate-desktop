@@ -3,7 +3,6 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerAuthRoutes } from "./auth";
-import { registerChatRoutes } from "./chat";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { setupVite, serveStatic } from "./vite";
@@ -11,27 +10,29 @@ import http from "http";
 
 const app = express();
 
-// CORS
+// CORS — doit être AVANT tout middleware
+const ALLOWED_ORIGINS = [
+  "https://archimate-desktop.vercel.app",
+  "https://archimate-desktop-adx-international.vercel.app",
+  "https://archimate-desktop-git-main-adx-international.vercel.app",
+];
+
 app.use((req, res, next) => {
-  const origin = req.headers.origin as string;
+  const origin = req.headers.origin as string | undefined;
+  // En dev on accepte tout, en prod on filtre
+  const allowOrigin = process.env.NODE_ENV !== "production"
+    ? (origin ?? "*")
+    : (origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]);
 
-  const allowed = [
-    "https://archimate-desktop.vercel.app",
-    "https://archimate-desktop-adx-international.vercel.app",
-  ];
-
-  if (!origin || allowed.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-  }
-
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept,Origin,X-Requested-With");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length,Content-Range");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
-
   next();
 });
 
@@ -45,7 +46,6 @@ app.get("/api/health", (_, res) => {
 });
 
 registerAuthRoutes(app);
-registerChatRoutes(app);
 
 app.use(
   "/api/trpc",
@@ -55,23 +55,18 @@ app.use(
   })
 );
 
+const PORT = parseInt(process.env.PORT ?? "3000", 10);
+
 if (process.env.NODE_ENV === "development") {
   const server = http.createServer(app);
   setupVite(app, server).then(() => {
-    server.listen(3000, "0.0.0.0", () => {
-      console.log("Server listening on port 3000");
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`[AOS] Dev server on http://localhost:${PORT}`);
     });
   });
 } else {
-  if (!process.env.VERCEL) {
-    serveStatic(app);
-    if (process.env.NODE_ENV === "production" && (process.argv[1].endsWith("dist/index.js") || process.argv[1].includes("index.js"))) {
-      const server = http.createServer(app);
-      server.listen(3000, "0.0.0.0", () => {
-        console.log("Production server listening on port 3000");
-      });
-    }
-  }
+  serveStatic(app);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[AOS] Production server on 0.0.0.0:${PORT}`);
+  });
 }
-
-export default app;
