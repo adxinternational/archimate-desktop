@@ -3,7 +3,7 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/api/(.*)", "destination": "https://archimate-desktop-production.up.railway.app/api/$1" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }
