@@ -35,6 +35,8 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
+const PROJECT_TYPES = ["Résidentiel", "Commercial", "Industriel", "Réhabilitation", "Aménagement intérieur", "Urbanisme", "Autre"];
+
 export default function ProjectCreate() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
