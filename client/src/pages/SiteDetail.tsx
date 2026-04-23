@@ -51,10 +51,15 @@ export default function SiteDetail() {
   const utils = trpc.useUtils();
 
   const { data: site, isLoading } = trpc.sites.byId.useQuery({ id: siteId });
-  const { data: journal } = trpc.sites.journal.useQuery({ siteId });
-  const { data: meetings } = trpc.sites.meetings.useQuery({ siteId });
-  const { data: incidents } = trpc.sites.incidents.useQuery({ siteId });
-  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: journalData } = trpc.sites.journal.useQuery({ siteId });
+  const { data: meetingsData } = trpc.sites.meetings.useQuery({ siteId });
+  const { data: incidentsData } = trpc.sites.incidents.useQuery({ siteId });
+  const { data: projectsData } = trpc.projects.list.useQuery();
+
+  const journal = Array.isArray(journalData) ? journalData : [];
+  const meetings = Array.isArray(meetingsData) ? meetingsData : [];
+  const incidents = Array.isArray(incidentsData) ? incidentsData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   // Forms
   const [journalOpen, setJournalOpen] = useState(false);
@@ -211,10 +216,10 @@ export default function SiteDetail() {
       <Tabs defaultValue="journal">
         <TabsList className="bg-muted/50">
           <TabsTrigger value="journal" className="gap-2">
-            <BookOpen className="w-3.5 h-3.5" />Journal ({journal?.length ?? 0})
+            <BookOpen className="w-3.5 h-3.5" />Journal ({journal.length})
           </TabsTrigger>
           <TabsTrigger value="meetings" className="gap-2">
-            <Users className="w-3.5 h-3.5" />Réunions ({meetings?.length ?? 0})
+            <Users className="w-3.5 h-3.5" />Réunions ({meetings.length})
           </TabsTrigger>
           <TabsTrigger value="incidents" className="gap-2">
             <AlertTriangle className="w-3.5 h-3.5" />

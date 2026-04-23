@@ -32,7 +32,8 @@ export default function Notes() {
   const [newNote, setNewNote] = useState({ title: "", content: "", category: "general" });
 
   const utils = trpc.useUtils();
-  const { data: notes, isLoading } = trpc.notes.list.useQuery();
+  const { data: notesData, isLoading } = trpc.notes.list.useQuery();
+  const notes = Array.isArray(notesData) ? notesData : [];
 
   const createMutation = trpc.notes.create.useMutation({
     onSuccess: () => {

@@ -35,7 +35,8 @@ export default function Opportunities() {
   const [searchTerm, setSearchTerm] = useState('');
   const utils = trpc.useUtils();
 
-  const { data: leads = [], isLoading } = trpc.leads.list.useQuery();
+  const { data: leadsData, isLoading } = trpc.leads.list.useQuery();
+  const leads = Array.isArray(leadsData) ? leadsData : [];
   const deleteMutation = trpc.leads.delete.useMutation({
     onSuccess: () => {
       toast.success("Opportunité supprimée");

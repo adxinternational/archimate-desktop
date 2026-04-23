@@ -31,7 +31,8 @@ function TeamTab() {
   const [form, setForm] = useState({ name: "", role: "", email: "", phone: "", hourlyRate: "" });
   const utils = trpc.useUtils();
 
-  const { data: team } = trpc.team.list.useQuery();
+  const { data: teamData } = trpc.team.list.useQuery();
+  const team = Array.isArray(teamData) ? teamData : [];
   const createMember = trpc.team.create.useMutation({
     onSuccess: () => { utils.team.list.invalidate(); setOpen(false); setForm({ name: "", role: "", email: "", phone: "", hourlyRate: "" }); toast.success("Membre ajouté"); },
   });
@@ -90,7 +91,7 @@ function TeamTab() {
         </Dialog>
       </div>
 
-      {!team || team.length === 0 ? (
+      {team.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Users className="w-12 h-12 mx-auto mb-2 opacity-20" />
           <p className="text-sm">Aucun membre dans l'équipe</p>
@@ -144,9 +145,13 @@ function TasksTab() {
   });
   const utils = trpc.useUtils();
 
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: projects } = trpc.projects.list.useQuery();
-  const { data: team } = trpc.team.list.useQuery();
+  const { data: tasksData } = trpc.tasks.list.useQuery();
+  const { data: projectsData } = trpc.projects.list.useQuery();
+  const { data: teamData } = trpc.team.list.useQuery();
+
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+  const team = Array.isArray(teamData) ? teamData : [];
 
   const createTask = trpc.tasks.create.useMutation({
     onSuccess: () => { utils.tasks.list.invalidate(); setOpen(false); toast.success("Tâche créée"); },
@@ -159,10 +164,10 @@ function TasksTab() {
   });
 
   const tasksByStatus = {
-    todo: tasks?.filter(t => t.status === "todo") ?? [],
-    in_progress: tasks?.filter(t => t.status === "in_progress") ?? [],
-    review: tasks?.filter(t => t.status === "review") ?? [],
-    done: tasks?.filter(t => t.status === "done") ?? [],
+    todo: tasks.filter(t => t.status === "todo"),
+    in_progress: tasks.filter(t => t.status === "in_progress"),
+    review: tasks.filter(t => t.status === "review"),
+    done: tasks.filter(t => t.status === "done"),
   };
 
   const StatusIcon = ({ status }: { status: string }) => {
@@ -201,7 +206,7 @@ function TasksTab() {
                   <Select value={form.assigneeId} onValueChange={v => setForm(f => ({ ...f, assigneeId: v }))}>
                     <SelectTrigger><SelectValue placeholder="Membre" /></SelectTrigger>
                     <SelectContent>
-                      {team?.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
+                      {team.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -318,10 +323,15 @@ function FinancesTab() {
   });
   const utils = trpc.useUtils();
 
-  const { data: invoices } = trpc.invoices.list.useQuery();
-  const { data: expenses } = trpc.expenses.list.useQuery();
-  const { data: clients } = trpc.clients.list.useQuery();
-  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: invoicesData } = trpc.invoices.list.useQuery();
+  const { data: expensesData } = trpc.expenses.list.useQuery();
+  const { data: clientsData } = trpc.clients.list.useQuery();
+  const { data: projectsData } = trpc.projects.list.useQuery();
+
+  const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+  const expenses = Array.isArray(expensesData) ? expensesData : [];
+  const clients = Array.isArray(clientsData) ? clientsData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   const createInvoice = trpc.invoices.create.useMutation({
     onSuccess: () => { utils.invoices.list.invalidate(); setInvoiceOpen(false); toast.success("Facture créée"); },
@@ -339,9 +349,9 @@ function FinancesTab() {
     onSuccess: () => utils.expenses.list.invalidate(),
   });
 
-  const totalRevenue = invoices?.filter(i => i.status === "paid").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0) ?? 0;
-  const totalExpenses = expenses?.reduce((s, e) => s + (parseFloat(e.amount as any) ?? 0), 0) ?? 0;
-  const pendingAmount = invoices?.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0) ?? 0;
+  const totalRevenue = invoices.filter(i => i.status === "paid").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0);
+  const totalExpenses = expenses.reduce((s, e) => s + (parseFloat(e.amount as any) ?? 0), 0);
+  const pendingAmount = invoices.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + (parseFloat(i.amount as any) ?? 0), 0);
 
   const EXPENSE_CATEGORIES = ["Matériaux", "Sous-traitance", "Déplacements", "Logiciels", "Fournitures", "Formation", "Autre"];
 
@@ -468,13 +478,13 @@ function FinancesTab() {
           </div>
         </CardHeader>
         <CardContent>
-          {!invoices || invoices.length === 0 ? (
+          {invoices.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Aucune facture</p>
           ) : (
             <div className="space-y-2">
               {invoices.map(invoice => {
-                const client = clients?.find(c => c.id === invoice.clientId);
-                const project = projects?.find(p => p.id === invoice.projectId);
+                const client = clients.find(c => c.id === invoice.clientId);
+                const project = projects.find(p => p.id === invoice.projectId);
                 return (
                   <div key={invoice.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -582,12 +592,12 @@ function FinancesTab() {
           </div>
         </CardHeader>
         <CardContent>
-          {!expenses || expenses.length === 0 ? (
+          {expenses.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Aucune dépense enregistrée</p>
           ) : (
             <div className="space-y-2">
               {expenses.slice(0, 10).map(expense => {
-                const project = projects?.find(p => p.id === expense.projectId);
+                const project = projects.find(p => p.id === expense.projectId);
                 return (
                   <div key={expense.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -623,13 +633,17 @@ function FinancesTab() {
 // Main Cabinet Page
 // ============================================================
 export default function Cabinet() {
-  const { data: team } = trpc.team.list.useQuery();
-  const { data: tasks } = trpc.tasks.list.useQuery();
-  const { data: invoices } = trpc.invoices.list.useQuery();
+  const { data: teamData } = trpc.team.list.useQuery();
+  const { data: tasksData } = trpc.tasks.list.useQuery();
+  const { data: invoicesData } = trpc.invoices.list.useQuery();
 
-  const pendingTasks = tasks?.filter(t => t.status !== "done").length ?? 0;
-  const overdueTasks = tasks?.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "done").length ?? 0;
-  const pendingInvoices = invoices?.filter(i => i.status === "sent" || i.status === "overdue").length ?? 0;
+  const team = Array.isArray(teamData) ? teamData : [];
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
+  const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+
+  const pendingTasks = tasks.filter(t => t.status !== "done").length;
+  const overdueTasks = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "done").length;
+  const pendingInvoices = invoices.filter(i => i.status === "sent" || i.status === "overdue").length;
 
   return (
     <div className="p-6 space-y-5 animate-fade-in">

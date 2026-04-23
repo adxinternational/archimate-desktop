@@ -48,7 +48,8 @@ export default function ClientDetail() {
   const [editing, setEditing] = useState(false);
 
   const { data: client, isLoading } = trpc.clients.byId.useQuery({ id: clientId });
-  const { data: clientProjects } = trpc.clients.projects.useQuery({ clientId });
+  const { data: clientProjectsData } = trpc.clients.projects.useQuery({ clientId });
+  const clientProjects = Array.isArray(clientProjectsData) ? clientProjectsData : [];
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientSchema),

@@ -84,8 +84,10 @@ export default function Sites() {
     startDate: "", status: "planning" as const,
   });
 
-  const { data: sites, isLoading } = trpc.sites.list.useQuery();
-  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: sitesData, isLoading } = trpc.sites.list.useQuery();
+  const { data: projectsData } = trpc.projects.list.useQuery();
+  const sites = Array.isArray(sitesData) ? sitesData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
   const utils = trpc.useUtils();
 
   const createMutation = trpc.sites.create.useMutation({

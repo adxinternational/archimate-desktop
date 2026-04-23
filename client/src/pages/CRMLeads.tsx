@@ -42,7 +42,8 @@ export default function CRMLeads() {
   }>({ name: "", email: "", phone: "", company: "", source: "other", value: "" });
 
   // ── Données réelles ──────────────────────────────────────
-  const { data: leads = [], isLoading, refetch } = trpc.leads.list.useQuery();
+  const { data: leadsData, isLoading, refetch } = trpc.leads.list.useQuery();
+  const leads = Array.isArray(leadsData) ? leadsData : [];
 
   const createLead = trpc.leads.create.useMutation({
     onSuccess: () => { refetch(); setShowCreate(false); resetForm(); toast.success("Lead créé"); },

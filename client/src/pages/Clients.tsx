@@ -34,8 +34,10 @@ export default function Clients() {
   const [filterStatus, setFilterStatus] = useState<"all" | "prospect" | "active" | "inactive">("all");
   const utils = trpc.useUtils();
 
-  const { data: clients, isLoading } = trpc.clients.list.useQuery();
-  const { data: projects } = trpc.projects.list.useQuery();
+  const { data: clientsData, isLoading } = trpc.clients.list.useQuery();
+  const { data: projectsData } = trpc.projects.list.useQuery();
+  const clients = Array.isArray(clientsData) ? clientsData : [];
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   const deleteMutation = trpc.clients.delete.useMutation({
     onSuccess: () => {

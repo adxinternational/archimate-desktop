@@ -43,23 +43,26 @@ export default function Economy() {
   const [form, setForm] = useState<Partial<NewEstimate>>({});
 
   // ── Données réelles ──────────────────────────────────────
-  const { data: projects = [], isLoading: loadingProjects } = trpc.projects.list.useQuery();
+  const { data: projectsData = [], isLoading: loadingProjects } = trpc.projects.list.useQuery();
+  const projects = Array.isArray(projectsData) ? projectsData : [];
 
   const activeProject = selectedProjectId
     ? projects.find(p => p.id === selectedProjectId)
     : projects[0] ?? null;
 
-  const { data: estimates = [], isLoading: loadingEstimates, refetch } =
+  const { data: estimatesData = [], isLoading: loadingEstimates, refetch } =
     trpc.economy.getCostEstimates.useQuery(
       { projectId: activeProject?.id ?? 0 },
       { enabled: !!activeProject?.id }
     );
+  const estimates = Array.isArray(estimatesData) ? estimatesData : [];
 
-  const { data: permits = [] } =
+  const { data: permitsData = [] } =
     trpc.economy.getBuildingPermits.useQuery(
       { projectId: activeProject?.id ?? 0 },
       { enabled: !!activeProject?.id }
     );
+  const permits = Array.isArray(permitsData) ? permitsData : [];
 
   const createEstimate = trpc.economy.createCostEstimate.useMutation({
     onSuccess: () => { refetch(); setShowAddDialog(false); setForm({}); toast.success("Estimation ajoutée"); },

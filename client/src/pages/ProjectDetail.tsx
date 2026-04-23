@@ -101,7 +101,8 @@ function DocumentsTab({ projectId }: { projectId: number }) {
   const [form, setForm] = useState({ name: "", category: "other" as const, notes: "" });
   const utils = trpc.useUtils();
 
-  const { data: documents } = trpc.projects.documents.useQuery({ projectId });
+  const { data: documentsData } = trpc.projects.documents.useQuery({ projectId });
+  const documents = Array.isArray(documentsData) ? documentsData : [];
   const addDoc = trpc.projects.addDocument.useMutation({
     onSuccess: () => { utils.projects.documents.invalidate(); setOpen(false); setForm({ name: "", category: "other", notes: "" }); toast.success("Document ajouté"); },
   });
@@ -247,7 +248,8 @@ function ProceduresTab({ projectId }: { projectId: number }) {
   const [form, setForm] = useState({ title: "", type: "PC" as const, notes: "" });
   const utils = trpc.useUtils();
 
-  const { data: procedures } = trpc.projects.procedures.useQuery({ projectId });
+  const { data: proceduresData } = trpc.projects.procedures.useQuery({ projectId });
+  const procedures = Array.isArray(proceduresData) ? proceduresData : [];
   const addProc = trpc.projects.addProcedure.useMutation({
     onSuccess: () => { utils.projects.procedures.invalidate(); setOpen(false); toast.success("Procédure ajoutée"); },
   });
@@ -346,9 +348,13 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false);
 
   const { data: project, isLoading } = trpc.projects.byId.useQuery({ id: projectId });
-  const { data: phases } = trpc.projects.phases.useQuery({ projectId });
-  const { data: clients } = trpc.clients.list.useQuery();
-  const { data: tasks } = trpc.tasks.byProject.useQuery({ projectId });
+  const { data: phasesData } = trpc.projects.phases.useQuery({ projectId });
+  const { data: clientsData } = trpc.clients.list.useQuery();
+  const { data: tasksData } = trpc.tasks.byProject.useQuery({ projectId });
+
+  const phases = Array.isArray(phasesData) ? phasesData : [];
+  const clients = Array.isArray(clientsData) ? clientsData : [];
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),

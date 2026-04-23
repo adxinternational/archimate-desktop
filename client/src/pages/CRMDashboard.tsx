@@ -7,8 +7,11 @@ import { AppLayout } from "@/components/AppLayout";
 
 export function CRMDashboard() {
   const { data: metrics, isLoading } = trpc.mvp.crm.pipelineMetrics.useQuery();
-  const { data: qualifiedLeads } = trpc.mvp.crm.qualifiedLeads.useQuery();
-  const { data: overdueLeads } = trpc.mvp.crm.overdueLeads.useQuery({ daysThreshold: 7 });
+  const { data: qualifiedLeadsData } = trpc.mvp.crm.qualifiedLeads.useQuery();
+  const { data: overdueLeadsData } = trpc.mvp.crm.overdueLeads.useQuery({ daysThreshold: 7 });
+
+  const qualifiedLeads = Array.isArray(qualifiedLeadsData) ? qualifiedLeadsData : [];
+  const overdueLeads = Array.isArray(overdueLeadsData) ? overdueLeadsData : [];
 
   if (isLoading) {
     return (
@@ -173,7 +176,7 @@ export function CRMDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {qualifiedLeads && qualifiedLeads.length > 0 ? (
+            {qualifiedLeads.length > 0 ? (
               <div className="space-y-4">
                 {qualifiedLeads.map((lead: any) => (
                   <div key={lead.id} className="flex items-between justify-between border-b pb-4">
@@ -195,7 +198,7 @@ export function CRMDashboard() {
         </Card>
 
         {/* Overdue Leads */}
-        {overdueLeads && overdueLeads.length > 0 && (
+        {overdueLeads.length > 0 && (
           <Card className="border-orange-200 bg-orange-50">
             <CardHeader>
               <CardTitle className="text-orange-900">Leads en Retard</CardTitle>

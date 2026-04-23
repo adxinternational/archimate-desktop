@@ -29,15 +29,25 @@ export default function EnhancedDashboard() {
   const [period, setPeriod] = useState<PeriodType>("month");
 
   // ── Toutes les données réelles ───────────────────────────
-  const { data: projects = [], isLoading: loadingProj } = trpc.projects.list.useQuery();
-  const { data: clients = [], isLoading: loadingClients } = trpc.clients.list.useQuery();
-  const { data: tasks = [], isLoading: loadingTasks } = trpc.tasks.list.useQuery();
-  const { data: team = [] } = trpc.team.list.useQuery();
-  const { data: invoices = [] } = trpc.invoices.list.useQuery();
-  const { data: expenses = [] } = trpc.expenses.list.useQuery();
-  const { data: sites = [] } = trpc.sites.list.useQuery();
-  const { data: notes = [] } = trpc.notes.list.useQuery();
-  const { data: blogPosts = [] } = trpc.blog.list.useQuery();
+  const { data: projectsData, isLoading: loadingProj } = trpc.projects.list.useQuery();
+  const { data: clientsData, isLoading: loadingClients } = trpc.clients.list.useQuery();
+  const { data: tasksData, isLoading: loadingTasks } = trpc.tasks.list.useQuery();
+  const { data: teamData } = trpc.team.list.useQuery();
+  const { data: invoicesData } = trpc.invoices.list.useQuery();
+  const { data: expensesData } = trpc.expenses.list.useQuery();
+  const { data: sitesData } = trpc.sites.list.useQuery();
+  const { data: notesData } = trpc.notes.list.useQuery();
+  const { data: blogPostsData } = trpc.blog.list.useQuery();
+
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+  const clients = Array.isArray(clientsData) ? clientsData : [];
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
+  const team = Array.isArray(teamData) ? teamData : [];
+  const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+  const expenses = Array.isArray(expensesData) ? expensesData : [];
+  const sites = Array.isArray(sitesData) ? sitesData : [];
+  const notes = Array.isArray(notesData) ? notesData : [];
+  const blogPosts = Array.isArray(blogPostsData) ? blogPostsData : [];
 
   const isLoading = loadingProj || loadingClients || loadingTasks;
 

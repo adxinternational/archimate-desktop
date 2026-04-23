@@ -33,9 +33,13 @@ export default function ProjectPerformance() {
   const [period, setPeriod] = useState<PeriodType>("month");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
-  const { data: projects = [], isLoading: loadingProj } = trpc.projects.list.useQuery();
-  const { data: invoices = [] } = trpc.invoices.list.useQuery();
-  const { data: expenses = [] } = trpc.expenses.list.useQuery();
+  const { data: projectsData, isLoading: loadingProj } = trpc.projects.list.useQuery();
+  const { data: invoicesData } = trpc.invoices.list.useQuery();
+  const { data: expensesData } = trpc.expenses.list.useQuery();
+
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+  const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+  const expenses = Array.isArray(expensesData) ? expensesData : [];
 
   const isLoading = loadingProj;
 

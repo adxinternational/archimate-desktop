@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { Plus, ChevronRight, AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { BulkActionsBar, BulkSelectableRow } from "@/components/BulkActions";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 const phases = ["ESQ", "APS", "APD", "PRO", "DCE", "EXE", "DET", "AOR"];
 
@@ -22,7 +27,9 @@ export default function Projects() {
   const [selectedPhase, setSelectedPhase] = useState("all");
   const utils = trpc.useUtils();
 
-  const { data: projects = [], isLoading } = trpc.projects.list.useQuery();
+  const { data: projectsData, isLoading } = trpc.projects.list.useQuery();
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+
   const deleteMutation = trpc.projects.delete.useMutation({
     onSuccess: () => {
       toast.success("Projet supprimé");
