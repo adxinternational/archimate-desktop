@@ -126,7 +126,7 @@ export default function ProjectCreate() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {clients?.map(c => (
+                          {(Array.isArray(clients) ? clients : []).map(c => (
                             <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                           ))}
                         </SelectContent>
