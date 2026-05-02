@@ -1,6 +1,10 @@
+import { useState } from "react";
+import { useRoute, useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import {
   Form,
   FormControl,
@@ -21,6 +25,28 @@ import {
   PROCEDURE_STATUS_LABELS
 } from "@/lib/constants";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const projectSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -29,7 +55,7 @@ const projectSchema = z.object({
   description: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
-  currentPhase: z.enum(["esq", "aps", "apd", "pc", "dce", "chantier", "doe"]),
+  currentPhase: z.enum(["esq", "aps", "apd", "pro", "dce", "exe", "det", "aor"]),
   budgetEstimated: z.string().optional(),
   startDate: z.string().optional(),
   status: z.enum(["active", "on_hold", "completed", "cancelled"]),
